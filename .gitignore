@@ -1,0 +1,21 @@
+# ---- 临时工作文件（梳理过程中的中间产物，不纳入版本库）----
+# er-model 下以 _ 开头的脚本/清单/中间产物
+er-model/_*
+_*_list.txt
+_map.txt
+_mkmap.ps1
+_group.ps1
+_extract.ps1
+# DDL 抽取临时文件
+er-model/_ddl_*.txt
+er-model/**/_tmp*
+
+# ---- IDE / 构建 ----
+.idea/
+*.iml
+out/
+target/
+
+# ---- OS ----
+Thumbs.db
+.DS_Store
