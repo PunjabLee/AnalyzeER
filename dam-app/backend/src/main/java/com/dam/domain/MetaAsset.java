@@ -50,10 +50,11 @@ public class MetaAsset {
     @Column(name = "table_comment", length = 500)
     private String tableComment;
 
-    @Column(length = 64)
+    @Column(name = "charset", length = 64)
     private String charset;
 
-    @Column(length = 64)
+    /** column renamed: COLLATE is a MySQL reserved word (H2 MODE=MySQL tolerated it) */
+    @Column(name = "collate_name", length = 64)
     private String collate;
 
     @Column(name = "column_count")
