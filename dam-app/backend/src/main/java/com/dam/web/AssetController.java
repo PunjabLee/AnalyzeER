@@ -170,7 +170,7 @@ public class AssetController {
     }
 
     static AssetSummary toSummary(MetaAsset a) {
-        return new AssetSummary(a.getAssetUrn(), a.getName(), a.getGrading(), a.getDomainCode(),
+        return new AssetSummary(a.getId(), a.getAssetUrn(), a.getName(), a.getGrading(), a.getDomainCode(),
                 a.getPrefixFamily(), a.getHasPk(), a.getColumnCount(), a.getTableComment(),
                 a.getCertificationStatus(), a.getSensitivityLevel(), a.getDeprecated(),
                 a.getOwnerId(), a.getStewardId());

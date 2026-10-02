@@ -10,6 +10,7 @@ public final class Dtos {
     private Dtos() { }
 
     public record AssetSummary(
+            Long id,
             String urn,
             String name,
             String grading,
