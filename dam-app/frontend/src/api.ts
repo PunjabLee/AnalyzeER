@@ -168,6 +168,12 @@ const patch = <T>(url: string, body: unknown) =>
   request<T>(url, { method: 'PATCH', body: JSON.stringify(body) })
 const del = (url: string) => request<void>(url, { method: 'DELETE' })
 
+export interface Facets {
+  domains: Record<string, number>
+  gradings: Record<string, number>
+  total: number
+}
+
 export const api = {
   // catalog
   count: () => request<number>('/api/assets/count'),
@@ -178,7 +184,7 @@ export const api = {
       (domain ? '&domain=' + encodeURIComponent(domain) : '') +
       (grading ? '&grading=' + encodeURIComponent(grading) : '')
     ),
-  facets: () => request<Record<string, number>>('/api/assets/facets'),
+  facets: () => request<Facets>('/api/assets/facets'),
   domains: () => request<DomainInfo[]>('/api/domains'),
   detailByName: (name: string) => request<AssetDetail>('/api/assets/by-name/' + encodeURIComponent(name)),
   patchGovernance: (assetId: number, g: GovernanceUpdate) =>

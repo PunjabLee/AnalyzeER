@@ -49,8 +49,9 @@ class M1ExitCriteriaTest {
     void domainsAndRelationsIngested() {
         // 18 business domains + OT + B/C pseudo domains
         assertTrue(domainRepo.count() >= 19, "meta_domain rebuilt from 00-总览");
-        // 406 parsed FK marks, polymorphic targets expanded -> 408 stored edges
-        assertEquals(408L, relRepo.count(), "FK[...] edges parsed from 03-逻辑数据模型");
+        // 修复 B-1（错挂/丢边/重复）后重出的边集基准：413 条（含多态 FK[A/B] 展开）
+        // 完整性由 M1RelationIntegrityTest 的"源表必含该列"强不变式守卫
+        assertEquals(413L, relRepo.count(), "FK[...] edges parsed from 03-逻辑数据模型");
     }
 
     @Test
@@ -59,7 +60,7 @@ class M1ExitCriteriaTest {
         var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
         assertEquals(ExportService.SCHEMA, root.get("schema").asText());
         assertEquals(1322, root.get("assetCount").asInt());
-        assertEquals(408, root.get("relations").size(), "full edge set exported (incl. unresolved)");
+        assertEquals(413, root.get("relations").size(), "full edge set exported (incl. unresolved)");
         // every asset carries its urn anchor (diff key)
         root.get("assets").forEach(n -> assertTrue(n.get("urn").asText().startsWith("mysql:test_erp:")));
 

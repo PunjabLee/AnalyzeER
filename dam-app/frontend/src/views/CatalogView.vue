@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api, type AssetSummary, type DomainInfo } from '../api'
+import { api, type AssetSummary, type DomainInfo, type Facets } from '../api'
 
 const router = useRouter()
 const count = ref<number>(0)
 const keyword = ref('')
 const assets = ref<AssetSummary[]>([])
 const domains = ref<DomainInfo[]>([])
-const facets = ref<Record<string, number>>({})
+const facets = ref<Facets>({ domains: {}, gradings: {}, total: 0 })
 const activeDomain = ref<string>('')   // '' = 全部
 const activeGrading = ref<string>('')  // '' = 全部
 const loading = ref(false)
@@ -68,7 +68,7 @@ onMounted(async () => {
         <h3>分级</h3>
         <span v-for="g in ['A', 'B', 'C']" :key="g" class="chip"
               :class="{ on: activeGrading === g }" @click="pickGrading(g)">
-          {{ g }}（{{ facets[g] ?? '—' }}）
+          {{ g }}（{{ facets.gradings[g] ?? '—' }}）
         </span>
         <h3>业务域</h3>
         <ul class="domlist">
@@ -78,7 +78,7 @@ onMounted(async () => {
           <li v-for="d in domains" :key="d.code"
               :class="{ on: activeDomain === d.code }" @click="pickDomain(d.code)">
             <span class="dcode">{{ d.code }}</span> {{ d.name }}
-            <em>{{ facets[d.code] ?? d.declaredCount }}</em>
+            <em>{{ facets.domains[d.code] ?? d.declaredCount }}</em>
           </li>
         </ul>
       </div>

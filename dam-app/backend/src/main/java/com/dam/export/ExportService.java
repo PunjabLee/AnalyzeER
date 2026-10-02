@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Lossless-ish catalog export (PLAN M1.4, "dam-meta/1" schema). JSON and YAML views of
@@ -49,13 +51,19 @@ public class ExportService {
     }
 
     private String write(String domain, String grading, boolean asYaml) {
-        List<MetaAsset> assets = assetRepo.findAll().stream()
+        List<MetaAsset> all = assetRepo.findAll();
+        // id -> urn map over ALL assets so a relation's target urn resolves even when the
+        // target table falls outside the exported slice (H-2: never strip a resolvable target).
+        Map<Long, String> urnById = new HashMap<>();
+        all.forEach(a -> urnById.put(a.getId(), a.getAssetUrn()));
+
+        List<MetaAsset> assets = all.stream()
                 .filter(a -> domain == null || domain.isBlank() || domain.equalsIgnoreCase(a.getDomainCode()))
                 .filter(a -> grading == null || grading.isBlank() || grading.equalsIgnoreCase(a.getGrading()))
                 .sorted((x, y) -> x.getName().compareToIgnoreCase(y.getName()))
                 .toList();
-        Map<Long, String> urnById = new HashMap<>();
-        assets.forEach(a -> urnById.put(a.getId(), a.getAssetUrn()));
+        Set<Long> sliceIds = new HashSet<>();
+        assets.forEach(a -> sliceIds.add(a.getId()));
 
         ObjectNode root = json.createObjectNode();
         root.put("schema", SCHEMA);
@@ -95,8 +103,8 @@ public class ExportService {
         ArrayNode rels = root.putArray("relations");
         for (MetaRelation r : relRepo.findAll()) {
             // keep edges whose FROM end is inside the exported asset slice;
-            // unresolved targets stay in the export with toUrn=null + targetRaw (M5 loop)
-            if (!urnById.containsKey(r.getFromAssetId())) {
+            // unresolved targets stay with toUrn=null + targetRaw (M5 confirmation loop)
+            if (!sliceIds.contains(r.getFromAssetId())) {
                 continue;
             }
             ObjectNode n = rels.addObject();
@@ -104,8 +112,11 @@ public class ExportService {
             n.put("fromColumn", r.getFromColumn());
             if (r.getToAssetId() != null && urnById.containsKey(r.getToAssetId())) {
                 n.put("toUrn", urnById.get(r.getToAssetId()));
+                // target exists in the catalog but outside this slice -> explicit external flag
+                n.put("externalTarget", !sliceIds.contains(r.getToAssetId()));
             } else {
                 n.putNull("toUrn");
+                n.put("externalTarget", false);
             }
             n.put("toColumn", r.getToColumn());
             n.put("targetRaw", r.getTargetRaw());

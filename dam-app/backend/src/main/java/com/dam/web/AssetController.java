@@ -10,6 +10,7 @@ import com.dam.repository.MetaRelationRepository;
 import com.dam.web.dto.Dtos.AssetDetail;
 import com.dam.web.dto.Dtos.AssetSummary;
 import com.dam.web.dto.Dtos.ColumnView;
+import com.dam.web.dto.Dtos.Facets;
 import com.dam.web.dto.Dtos.GovernanceUpdate;
 import com.dam.web.dto.Dtos.RelationView;
 import org.springframework.http.ResponseEntity;
@@ -66,15 +67,21 @@ public class AssetController {
         return assets.stream().limit(limit).map(AssetController::toSummary).toList();
     }
 
-    /** Domain/grading counts for the catalog sidebar (drill-down facets, PLAN M1.3). */
+    /**
+     * Facet counts for the catalog sidebar (drill-down facets, PLAN M1.3), explicitly bucketed
+     * so a grading code (A/B/C) and a pseudo-domain code (B/C) can never collide in one map —
+     * the previous flat Map&lt;domainCode,count&gt; made the frontend read facets["A"] and always
+     * show the A-level chip empty while B/C chips silently showed pseudo-domain totals.
+     */
     @GetMapping("/facets")
-    public Map<String, Long> facets() {
-        return assetRepo.findAll().stream()
-                .filter(a -> a.getDomainCode() != null)
-                .collect(Collectors.groupingBy(
-                        MetaAsset::getDomainCode,
-                        TreeMap::new,
-                        Collectors.counting()));
+    public Facets facets() {
+        Map<String, Long> byDomain = new TreeMap<>();
+        Map<String, Long> byGrading = new TreeMap<>();
+        for (MetaAsset a : assetRepo.findAll()) {
+            byDomain.merge(a.getDomainCode() == null ? "?" : a.getDomainCode(), 1L, Long::sum);
+            byGrading.merge(a.getGrading() == null ? "?" : a.getGrading(), 1L, Long::sum);
+        }
+        return new Facets(byDomain, byGrading, assetRepo.count());
     }
 
     @GetMapping("/count")

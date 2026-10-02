@@ -47,7 +47,7 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 | 模块 | 内容 | 状态 |
 |---|---|---|
 | 分级标签摄取 | `ErModelCensusParser`+`GradingAssigner`：00-总览 域清单 → A/B/C=349/853/120、18 域+OT 入 `meta_domain` | ✅ |
-| 关系摄取（双通道） | `LogicalModelRelationParser`：03-逻辑数据模型 `FK[目标·依据]` → 408 边（五级证据+置信度+待确认） | ✅ |
+| 关系摄取（当前单通道） | `LogicalModelRelationParser`：03-逻辑数据模型 `FK[目标·依据]` → 413 边（五级证据+置信度+待确认；含 `M1RelationIntegrityTest` "源表必含该列"强不变式守卫）。ER 证据摘录第二通道为待确认项 | ✅ |
 | 治理属性 | 认证/敏感级/废弃/Owner/Steward：`PATCH /api/assets/{id}/governance` | ✅ |
 | 检索与导出 | 域/分级 facets 钻取；`/api/export/json`、`/api/export/yaml`（schema=dam-meta/1，按 asset_urn 可 diff） | ✅ |
 | 字典（M2 初版） | `dict_standard_field/dict_code_value/dict_naming_rule` CRUD + 种子 | ✅ |

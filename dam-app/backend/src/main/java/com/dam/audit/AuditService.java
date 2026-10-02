@@ -2,9 +2,13 @@ package com.dam.audit;
 
 import com.dam.domain.SysAuditLog;
 import com.dam.repository.SysAuditLogRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 
@@ -15,24 +19,34 @@ import java.time.Instant;
 @Service
 public class AuditService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuditService.class);
+
     private final SysAuditLogRepository repo;
 
     public AuditService(SysAuditLogRepository repo) {
         this.repo = repo;
     }
 
-    /** Explicit actor version (used at login, before the SecurityContext is set). */
+    /**
+     * Explicit actor version (used at login, before the SecurityContext is set).
+     *
+     * <p>Runs in its OWN transaction (REQUIRES_NEW): when called from within a caller
+     * transaction (a governance PATCH or a dq scan), a failing audit insert must NOT mark the
+     * caller's transaction rollback-only — otherwise swallowing it here would only resurface
+     * later as an UnexpectedRollbackException at commit, defeating "never break the main flow".
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(String username, String action, String target, String detail) {
         try {
-            SysAuditLog log = new SysAuditLog();
-            log.setUsername(username == null ? "anonymous" : username);
-            log.setAction(action);
-            log.setTarget(truncate(target, 200));
-            log.setDetail(truncate(detail, 1000));
-            log.setAtTs(Instant.now());
-            repo.save(log);
+            SysAuditLog row = new SysAuditLog();
+            row.setUsername(username == null ? "anonymous" : username);
+            row.setAction(action);
+            row.setTarget(truncate(target, 200));
+            row.setDetail(truncate(detail, 1000));
+            row.setAtTs(Instant.now());
+            repo.save(row);
         } catch (RuntimeException e) {
-            System.err.println("audit write failed: " + e.getMessage());
+            log.warn("audit write failed (action={}, user={}): {}", action, username, e.toString());
         }
     }
 

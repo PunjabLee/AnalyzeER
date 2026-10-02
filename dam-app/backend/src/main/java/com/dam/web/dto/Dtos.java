@@ -64,4 +64,9 @@ public final class Dtos {
             String deprecationNote,
             Long ownerId,
             Long stewardId) { }
+
+    /** catalog facets bucketed so domain codes and grading codes never collide (H-3) */
+    public record Facets(java.util.Map<String, Long> domains,
+                         java.util.Map<String, Long> gradings,
+                         long total) { }
 }
