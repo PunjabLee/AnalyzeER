@@ -22,3 +22,4 @@ target/
 Thumbs.db
 .DS_Store
 _cm.txt
+/.qoder/
