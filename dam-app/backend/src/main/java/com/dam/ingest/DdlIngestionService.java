@@ -34,8 +34,10 @@ import java.util.regex.Pattern;
 public class DdlIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(DdlIngestionService.class);
-    private static final Pattern HEX_FAMILY = Pattern.compile("^[np][0-9a-f]{7}_");
-    private static final Pattern BAK_DATE = Pattern.compile("_bak_\\d{6,8}$");
+    // Navicat-obfuscated families: N{7 hex}_ (Quartz) / P{7 hex}_ (Activiti); hex is uppercase in the dump
+    private static final Pattern HEX_FAMILY = Pattern.compile("^[NP][0-9A-Fa-f]{7}_");
+    // C-grade backups carry a 14-digit timestamp: _bak_yyyyMMddHHmmss (er-model 00-总览 §三)
+    private static final Pattern BAK_DATE = Pattern.compile("_bak_\\d{6,}$");
     private static final Pattern COPY = Pattern.compile("_copy\\d*$");
 
     private final MetaSourceRepository sourceRepo;

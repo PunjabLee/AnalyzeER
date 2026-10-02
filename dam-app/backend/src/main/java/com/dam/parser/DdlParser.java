@@ -61,7 +61,8 @@ public final class DdlParser {
             if (!cm.find()) {
                 continue;
             }
-            String name = cm.group(2).toLowerCase();
+            // keep the DDL's original case: obfuscated families are uppercase (N0DD15FF_/P..._)
+            String name = cm.group(2);
             rawNames.add(name);
 
             int end = i + 1;
@@ -107,7 +108,7 @@ public final class DdlParser {
             if (!nm.find()) {
                 continue;
             }
-            String colName = nm.group(1).toLowerCase();
+            String colName = nm.group(1);
             String rest = stripTrailingComma(nm.group(2));
 
             ParsedColumn col = new ParsedColumn(colName);
@@ -129,7 +130,7 @@ public final class DdlParser {
             if (c.find()) {
                 col.setComment(unquote(c.group(1)));
             }
-            if (pkCols.contains(colName)) {
+            if (pkCols.contains(colName.toLowerCase())) {
                 col.setPrimaryKey(true);
             }
             table.getColumns().add(col);

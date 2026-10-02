@@ -23,7 +23,11 @@ public class StartupIngestor {
     private String defaultSqlPath;
 
     @Bean
-    ApplicationRunner autoIngest(DdlIngestionService service, MetaAssetRepository assetRepo) {
+    ApplicationRunner autoIngest(DdlIngestionService service,
+                                 ErModelLabelsIngestionService labelsService,
+                                 RelationIngestionService relationService,
+                                 MetaAssetRepository assetRepo,
+                                 com.dam.repository.MetaRelationRepository relRepo) {
         return args -> {
             if (assetRepo.count() == 0) {
                 log.info("auto-on-startup ingest enabled and catalog empty -> ingesting default DDL");
@@ -33,6 +37,26 @@ public class StartupIngestor {
                 } catch (RuntimeException e) {
                     log.warn("Startup ingest skipped: {}", e.getMessage());
                 }
+            }
+            // M1: (re)apply A/B/C + domain labels when assets exist but labels are missing
+            try {
+                boolean labelsMissing = assetRepo.findAllByOrderByNameAsc().stream()
+                        .limit(50).anyMatch(a -> a.getGrading() == null);
+                if (assetRepo.count() > 0 && labelsMissing) {
+                    log.info("Applying er-model labels (grading/domain)...");
+                    log.info("Labels ingest done: {}", labelsService.ingest(null));
+                }
+            } catch (RuntimeException e) {
+                log.warn("Labels ingest skipped: {}", e.getMessage());
+            }
+            // M1: FK[...] edges from the logical model (relation channel) when the edge store is empty
+            try {
+                if (assetRepo.count() > 0 && relRepo.count() == 0) {
+                    log.info("Ingesting relations from 03-逻辑数据模型...");
+                    log.info("Relation ingest done: {}", relationService.ingest(null));
+                }
+            } catch (RuntimeException e) {
+                log.warn("Relation ingest skipped: {}", e.getMessage());
             }
         };
     }

@@ -62,6 +62,25 @@ public class MetaAsset {
     @Column(name = "source_id")
     private Long sourceId;
 
+    /** 治理属性（M1.5，评审#4）：认证 / 弃用 / 敏感分级 / 负责人 */
+    @Column(name = "certification_status", length = 16)
+    private String certificationStatus = "未认证"; // 认证 / 待审 / 未认证
+
+    @Column(name = "sensitivity_level", length = 16)
+    private String sensitivityLevel; // PII / 机密 / 内部 / 公开
+
+    @Column(name = "deprecated")
+    private Boolean deprecated = false;
+
+    @Column(name = "deprecation_note", length = 500)
+    private String deprecationNote;
+
+    @Column(name = "owner_id")
+    private Long ownerId;
+
+    @Column(name = "steward_id")
+    private Long stewardId;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getAssetUrn() { return assetUrn; }
@@ -88,4 +107,16 @@ public class MetaAsset {
     public void setColumnCount(Integer columnCount) { this.columnCount = columnCount; }
     public Long getSourceId() { return sourceId; }
     public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
+    public String getCertificationStatus() { return certificationStatus; }
+    public void setCertificationStatus(String certificationStatus) { this.certificationStatus = certificationStatus; }
+    public String getSensitivityLevel() { return sensitivityLevel; }
+    public void setSensitivityLevel(String sensitivityLevel) { this.sensitivityLevel = sensitivityLevel; }
+    public Boolean getDeprecated() { return deprecated; }
+    public void setDeprecated(Boolean deprecated) { this.deprecated = deprecated; }
+    public String getDeprecationNote() { return deprecationNote; }
+    public void setDeprecationNote(String deprecationNote) { this.deprecationNote = deprecationNote; }
+    public Long getOwnerId() { return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
+    public Long getStewardId() { return stewardId; }
+    public void setStewardId(Long stewardId) { this.stewardId = stewardId; }
 }

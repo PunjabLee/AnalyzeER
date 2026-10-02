@@ -27,6 +27,12 @@ dam:
     schema: test_erp
     # M0 POC convenience: ingest default DDL on startup when catalog is empty
     auto-on-startup: true
+  security:
+    # POC dev secret (>= 32 bytes). [待确认] production key source (vault/env injection) before go-live.
+    jwt-secret: ${DAM_JWT_SECRET:dam-poc-hs256-secret-change-me-0123456789}
+    jwt-ttl-hours: 12
+    # POC shared password for in-memory users admin/steward/viewer
+    poc-password: ${DAM_POC_PASSWORD:change-me-POC}
 
 ---
 spring:
