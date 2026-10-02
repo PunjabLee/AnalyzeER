@@ -1,0 +1,20 @@
+# M0 POC: local MySQL for the `mysql` Spring profile (dam_meta schema).
+# Default backend profile is h2 (no external DB needed); run `--profile mysql`
+# and start the backend with `--spring.profiles.active=mysql` to use this.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dam-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: dam_root
+      MYSQL_DATABASE: dam_meta
+      MYSQL_USER: dam
+      MYSQL_PASSWORD: dam_pwd
+    ports:
+      - "3306:3306"
+    volumes:
+      - dam_mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  dam_mysql_data:

@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: dam-backend
+  # Default profile uses in-memory H2 so M0 POC runs without an external MySQL.
+  # Switch to `mysql` profile (with docker-compose up) for the real dam_meta schema.
+  profiles:
+    active: h2
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  datasource:
+    url: jdbc:h2:mem:dam_meta;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+# M0 ingestion settings
+dam:
+  ingest:
+    # default DDL sample to ingest (resolved relative to backend working dir)
+    default-sql-path: ../../test_erp.sql
+    # schema name recorded into asset_urn (mysql:{schema}:{table})
+    schema: test_erp
+    # M0 POC convenience: ingest default DDL on startup when catalog is empty
+    auto-on-startup: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://localhost:3306/dam_meta?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: dam
+    password: dam
+  jpa:
+    hibernate:
+      ddl-auto: update

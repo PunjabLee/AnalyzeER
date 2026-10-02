@@ -1,0 +1,3 @@
+# pnpm 11: build scripts are blocked by default; allow esbuild (vite dependency) explicitly.
+allowBuilds:
+  esbuild: true
