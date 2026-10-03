@@ -109,7 +109,21 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 接口：`StartupIngestor` 自启链式跑②→①；`POST /api/ingest/relations` 全重建②后重叠加①；**`POST /api/ingest/er-evidence` 仅重叠加①不碰②**（避免 `deleteAllInBatch` 重置人工确认状态）。
 - 不 drop 就地升级复验：ddl-auto 自动为既有 `meta_relation` 补 `cardinality`/`conflict_flag` 列，②因 count>0 不重建、①因无 ER 边而叠加。
 - **S3 增强**（本轮，评审团遗留项）：`conflict_flag` 独立可过滤列（多父候选/目标冲突边精确标记，实测全新摄取 5 个多父候选事件去重落在 2 条散文边、`confirm_status` 保持待确认）；`ErReport` 补口径 javadoc（`resolvedProse ⊆ matched`、`conflicts/deferred*` 按 ER 行计非按去重边）；前端表详情关系区接 `cardinality` 与 `conflict_flag`（⚠ 目标冲突待消歧）并更正“全部来自逻辑模型 FK 列”为“② FK 列 + ① ER 叠加”；语料级快照对账测试。`mvn test` 68/68（新增 1 例），前端 `npm run build` 通过；全新 MySQL8 冒烟 `ErReport` 逐位一致、② 413/总 487/conflict_flag=2、① 74 全 1:N（无 ER 反向；3 对反向全为②基线固有合法双向互引、不同 FK 列）。
-- 通道①的消费方（血缘画布与确认工作台）属后续 M3 批次（递归 CTE 血缘查询 → 确认闭环 → X6 画布连线编辑）。
+- 通道①的消费方：血缘查询已于 **M3-2** 落地（见下）；X6 画布连线编辑与确认工作台属后续 M9.3/M5 批次。
+
+### M3-2 血缘查询（递归 CTE 即时查询）
+
+| 项 | 实现 | 状态 |
+|---|---|---|
+| 血缘服务 | `LineageService.trace(root, dir, depth)`：基于 `meta_relation` 有向边 `child(from)→parent(to)`（child 拥有 FK 列）；**DOWNSTREAM**（沿 `to→from`·谁引用我·影响分析）/ **UPSTREAM**（沿 `from→to`·我引用谁·数据来源）双向递归 | ✅ |
+| 存储取舍 | **MySQL 递归 CTE 即时查询**（锁定决策③）：不建 `meta_lineage_path` 闭包表，子图按需计算、关系一改即生效；闭包表作规模触顶后的预留增强 | ✅ |
+| 防环 | CTE 携带逗号 `path` + `LOCATE` 剪枝已访问节点 + 深度钳 `[1,10]`（语料含**合法 2-环**，如 `jf_customer ↔ jf_contract_quota_customer`）；同节点多路径去重取最小深度 | ✅ |
+| 双方言 | 经 JDBC 探针锁定跨 H2(`MODE=MySQL`)/MySQL8 兼容：① CTE **须显式列名列表** `lin(node,depth,…)`（H2 必需、MySQL 容）；② anchor **不可用 `CAST(NULL AS BIGINT)`**（MySQL 拒），改以 `:root` 保列类型一致 | ✅ |
+| 接口 | `GET /api/lineage?asset=<表名>&dir=downstream\|upstream&depth=6`（`/api/**` GET 免登录）；dir 非法→400、未知表→404 | ✅ |
+| 零臆造 | 节点/边端点均解析自目录（不产合成节点）；`LineageQueryTest`（4 例）断言枢纽双向可达、`distinct==nodeCount`（防环）、边端点闭合子图（零臆造）、深度钳制 | ✅ |
+
+- 实测（H2 与真实 MySQL 8 逐位一致）：`jf_sales_order` 枢纽 **downstream 41 节点/48 边**（深度分布 0:1/1:20/2:6/3:6/4:8，如 `jf_pay_request`/`jf_inventory_frozen_record`/`jf_receivable_*`）、**upstream 15 节点/17 边**（`jf_customer`/`jf_trader`/`jf_settlement_unit`/`jf_brand`…）；`danglingEdges=0`、`truncated=false`（达成退出标准 G3：枢纽正/反向可追溯 + 影响分析）。`mvn test` **72/72**（新增 `LineageQueryTest` 4 例）。
+- 注：CTE 返回行数（MySQL 探针 73）> 唯一节点数（41）——因多路径汇聚，service 按最小深度去重为唯一节点集。
 
 ## 关键设计口径（对齐评审结论）
 

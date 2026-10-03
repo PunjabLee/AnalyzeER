@@ -10,6 +10,8 @@ public interface MetaAssetRepository extends JpaRepository<MetaAsset, Long> {
 
     Optional<MetaAsset> findByAssetUrn(String assetUrn);
 
+    Optional<MetaAsset> findByNameIgnoreCase(String name);
+
     List<MetaAsset> findAllByOrderByNameAsc();
 
     List<MetaAsset> findByNameContainingIgnoreCaseOrderByNameAsc(String keyword);

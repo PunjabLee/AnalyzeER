@@ -79,4 +79,43 @@ public final class Dtos {
      * asset's current columns (no missing / foreign ids).
      */
     public record ColumnOrder(java.util.List<Long> columnIds) { }
+
+    /**
+     * M3-2 lineage: one reachable table in a recursive-blood lineage trace.
+     * depth = minimum hops from the root (a node reachable by several paths keeps its shortest).
+     */
+    public record LineageNode(
+            Long assetId,
+            String name,
+            int depth,
+            String grading,
+            String domainCode) { }
+
+    /** one traversed edge of the lineage subgraph (endpoints resolved against the catalog) */
+    public record LineageEdge(
+            Long relationId,
+            Long fromAssetId,
+            String fromName,       // child (FK owner)
+            String fromColumn,
+            Long toAssetId,
+            String toName,         // parent (referenced)
+            String cardinality,
+            String evidenceLevel,
+            Double confidence,
+            String origin) { }
+
+    /**
+     * Rooted lineage subgraph (PLAN G3 正/反向追溯). direction=DOWNSTREAM (who depends on me /
+     * impact analysis) or UPSTREAM (what I depend on). truncated when the subgraph exceeds the
+     * per-view node cap (PLAN §2.3 ≤ 200 nodes per single view).
+     */
+    public record LineageView(
+            String rootName,
+            Long rootAssetId,
+            String direction,
+            int maxDepth,
+            int nodeCount,
+            boolean truncated,
+            java.util.List<LineageNode> nodes,
+            java.util.List<LineageEdge> edges) { }
 }
