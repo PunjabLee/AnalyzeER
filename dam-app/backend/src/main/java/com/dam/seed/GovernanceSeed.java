@@ -29,6 +29,10 @@ public class GovernanceSeed {
                     "^[a-z][a-z0-9_]*$", "A", "medium", true);
             seedRule(rules, "R-STR-003", "表字符集必须为 utf8mb4", "structure", "CHARSET",
                     "utf8mb4", null, "low", true);
+            // D4 decision 2026-10-03: real drift is COLLATE (05 D-1), not charset; net-new rule,
+            // R-STR-003 kept as-is so the accepted M1 baseline {11,7,0} stays verbatim.
+            seedRule(rules, "R-STR-004", "表排序规则必须为 utf8mb4_general_ci", "structure", "COLLATE_DRIFT",
+                    "utf8mb4_general_ci", null, "low", true);
             // relationship-class: needs lineage/column stats, kept disabled in M1
             seedRule(rules, "R-REL-001", "同名列异指向检查(05 B-4)", "relationship", "NONE",
                     null, null, "high", false);

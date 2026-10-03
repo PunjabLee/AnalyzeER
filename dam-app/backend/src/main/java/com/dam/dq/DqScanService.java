@@ -60,6 +60,7 @@ public class DqScanService {
             switch (rule.getChecker()) {
                 case "NO_PK" -> found.addAll(noPk(rule, assets, now));
                 case "CHARSET" -> found.addAll(charset(rule, assets, now));
+                case "COLLATE_DRIFT" -> found.addAll(collateDrift(rule, assets, now));
                 case "COLUMN_NAMING" -> found.addAll(columnNaming(rule, assets, now));
                 case "TABLE_NAMING" -> found.addAll(tableNaming(rule, assets, now));
                 default -> { /* relationship placeholders: nothing to run yet */ }
@@ -86,6 +87,19 @@ public class DqScanService {
         return assets.stream()
                 .filter(a -> a.getCharset() != null && !a.getCharset().equalsIgnoreCase(expect))
                 .map(a -> issue(rule, a, null, "表字符集 " + a.getCharset() + " != " + expect, now))
+                .toList();
+    }
+
+    /**
+     * 05 D-1 real drift lives in table COLLATION (three families coexist: general_ci/unicode_ci/
+     * 0900_ai_ci) while charset is uniformly utf8mb4. Tables without an explicit table-level
+     * collate inherit the database default and are NOT flagged (matches charset semantics).
+     */
+    private List<DqIssue> collateDrift(DqRule rule, List<MetaAsset> assets, Instant now) {
+        String expect = rule.getParam() == null ? "utf8mb4_general_ci" : rule.getParam();
+        return assets.stream()
+                .filter(a -> a.getCollate() != null && !a.getCollate().equalsIgnoreCase(expect))
+                .map(a -> issue(rule, a, null, "表排序规则 " + a.getCollate() + " != " + expect, now))
                 .toList();
     }
 

@@ -7,6 +7,7 @@ import com.dam.domain.MetaRelation;
 import com.dam.repository.MetaAssetRepository;
 import com.dam.repository.MetaColumnRepository;
 import com.dam.repository.MetaRelationRepository;
+import com.dam.repository.SysUserRepository;
 import com.dam.web.dto.Dtos.AssetDetail;
 import com.dam.web.dto.Dtos.AssetSummary;
 import com.dam.web.dto.Dtos.ColumnView;
@@ -37,15 +38,18 @@ public class AssetController {
     private final MetaAssetRepository assetRepo;
     private final MetaColumnRepository columnRepo;
     private final MetaRelationRepository relRepo;
+    private final SysUserRepository userRepo;
     private final AuditService audit;
 
     public AssetController(MetaAssetRepository assetRepo,
                            MetaColumnRepository columnRepo,
                            MetaRelationRepository relRepo,
+                           SysUserRepository userRepo,
                            AuditService audit) {
         this.assetRepo = assetRepo;
         this.columnRepo = columnRepo;
         this.relRepo = relRepo;
+        this.userRepo = userRepo;
         this.audit = audit;
     }
 
@@ -144,6 +148,10 @@ public class AssetController {
             return ResponseEntity.notFound().build();
         }
         MetaAsset a = found.get();
+        // D5 (2026-10-03): owner/steward resolve against the authoritative sys_user identity
+        // source; a dangling reference is rejected as a client error (GlobalExceptionHandler -> 400).
+        requireUserExists(g.ownerId(), "owner_id");
+        requireUserExists(g.stewardId(), "steward_id");
         if (g.certificationStatus() != null) {
             a.setCertificationStatus(g.certificationStatus());
         }
@@ -165,6 +173,12 @@ public class AssetController {
         MetaAsset saved = assetRepo.save(a);
         audit.record("GOVERNANCE_UPDATE", saved.getAssetUrn(), g.toString());
         return ResponseEntity.ok(toSummary(saved));
+    }
+
+    private void requireUserExists(Long userId, String field) {
+        if (userId != null && userRepo.findById(userId).isEmpty()) {
+            throw new IllegalArgumentException(field + " 不存在于 sys_user: " + userId);
+        }
     }
 
     private static RelationView toRelation(MetaRelation r, String direction,

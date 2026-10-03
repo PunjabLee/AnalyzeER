@@ -30,6 +30,15 @@ public class SysUser {
     @Column(length = 32)
     private String role;
 
+    /**
+     * BCrypt hash of the account password (D5 decision 2026-10-03: sys_user is the
+     * authoritative identity source for the POC, replacing the in-memory users).
+     * Nullable only so an existing MySQL row survives the schema add; UserSeed always
+     * backfills it, and the DB-backed UserDetailsService rejects a null hash at login.
+     */
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }
@@ -38,4 +47,6 @@ public class SysUser {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 }
