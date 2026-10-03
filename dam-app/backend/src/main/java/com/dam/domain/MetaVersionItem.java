@@ -40,9 +40,13 @@ public class MetaVersionItem {
     @Column(name = "change_type", nullable = false, length = 16)
     private String changeType;
 
-    /** canonical column-set fingerprint of the asset at this snapshot */
+    /**
+     * canonical column-set fingerprint of the asset at this snapshot. Explicit {@code longtext}:
+     * a bare {@code @Lob String} is created as TINYTEXT (255B) by the MySQL dialect, which truncates
+     * wide tables' signatures (data-too-long); longtext removes any size ceiling.
+     */
     @Lob
-    @Column(name = "signature", nullable = false)
+    @Column(name = "signature", nullable = false, columnDefinition = "longtext")
     private String signature;
 
     @Column(name = "schema_hash", nullable = false, length = 64)
