@@ -49,9 +49,12 @@ class M1ExitCriteriaTest {
     void domainsAndRelationsIngested() {
         // 18 business domains + OT + B/C pseudo domains
         assertTrue(domainRepo.count() >= 19, "meta_domain rebuilt from 00-总览");
-        // 修复 B-1（错挂/丢边/重复）后重出的边集基准：413 条（含多态 FK[A/B] 展开）
-        // 完整性由 M1RelationIntegrityTest 的"源表必含该列"强不变式守卫
-        assertEquals(413L, relRepo.count(), "FK[...] edges parsed from 03-逻辑数据模型");
+        // 修复 B-1（错挂/丢边/重复）后重出的【通道②(逻辑FK列)】边集基准：413 条（含多态 FK[A/B] 展开）。
+        // M3 通道①(ER证据摘录)会在其上叠加目录内真实新边（总数变大），但 413 的 M1 基准口径只锚定②，
+        // 完整性由 M1RelationIntegrityTest / ErEvidenceIntegrityTest 的"源表必含该列"强不变式分别守卫。
+        assertEquals(413L, relRepo.findByOrigin("逻辑FK列").size(),
+                "FK[...] edges parsed from 03-逻辑数据模型 (channel-2 baseline)");
+        assertTrue(relRepo.count() >= 413L, "total edges (② plus ER overlay) at least the ② baseline");
     }
 
     @Test
@@ -60,7 +63,16 @@ class M1ExitCriteriaTest {
         var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
         assertEquals(ExportService.SCHEMA, root.get("schema").asText());
         assertEquals(1322, root.get("assetCount").asInt());
-        assertEquals(413, root.get("relations").size(), "full edge set exported (incl. unresolved)");
+        // full edge set exported (incl. unresolved). Channel-2 (逻辑FK列) portion must equal the
+        // accepted 413 baseline; the total is >= 413 because channel-1 ER evidence overlays more edges.
+        long exportFk = 0;
+        for (var n : root.get("relations")) {
+            if ("逻辑FK列".equals(n.get("origin").asText())) {
+                exportFk++;
+            }
+        }
+        assertEquals(413L, exportFk, "channel-2 (逻辑FK列) edges in export");
+        assertTrue(root.get("relations").size() >= 413, "full edge set exported (incl. ER overlay)");
         // every asset carries its urn anchor (diff key)
         root.get("assets").forEach(n -> assertTrue(n.get("urn").asText().startsWith("mysql:test_erp:")));
 

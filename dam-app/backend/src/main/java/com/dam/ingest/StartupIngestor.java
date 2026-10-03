@@ -26,6 +26,7 @@ public class StartupIngestor {
     ApplicationRunner autoIngest(DdlIngestionService service,
                                  ErModelLabelsIngestionService labelsService,
                                  RelationIngestionService relationService,
+                                 ErEvidenceIngestionService erEvidenceService,
                                  MetaAssetRepository assetRepo,
                                  com.dam.repository.MetaRelationRepository relRepo,
                                  com.dam.model.ModelService modelService,
@@ -51,7 +52,7 @@ public class StartupIngestor {
             } catch (RuntimeException e) {
                 log.warn("Labels ingest skipped: {}", e.getMessage());
             }
-            // M1: FK[...] edges from the logical model (relation channel) when the edge store is empty
+            // M1: FK[...] edges from the logical model (relation channel-2) when the edge store is empty
             try {
                 if (assetRepo.count() > 0 && relRepo.count() == 0) {
                     log.info("Ingesting relations from 03-逻辑数据模型...");
@@ -59,6 +60,15 @@ public class StartupIngestor {
                 }
             } catch (RuntimeException e) {
                 log.warn("Relation ingest skipped: {}", e.getMessage());
+            }
+            // M3: overlay ER evidence (cardinality + evidence upgrade) from 01-ER图 (relation channel-1)
+            try {
+                if (assetRepo.count() > 0 && relRepo.findByOrigin("ER证据摘录").isEmpty()) {
+                    log.info("Overlaying ER evidence from 01-ER图...");
+                    log.info("ER evidence ingest done: {}", erEvidenceService.ingest(null));
+                }
+            } catch (RuntimeException e) {
+                log.warn("ER evidence ingest skipped: {}", e.getMessage());
             }
             // M2: three-level model (BOM/LDM/PDM) from 05 §二 once the catalog is present
             try {

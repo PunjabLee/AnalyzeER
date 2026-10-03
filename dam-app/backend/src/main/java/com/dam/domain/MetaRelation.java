@@ -62,6 +62,10 @@ public class MetaRelation {
     @Column(name = "cross_domain", length = 32)
     private String crossDomain;
 
+    /** 1:1 / 1:N (channel-1 ER evidence uniquely supplies cardinality; null until overlaid) */
+    @Column(name = "cardinality", length = 16)
+    private String cardinality;
+
     /** 依据原文 as written after the target inside FK[...] (minus the · separators) */
     @Column(name = "basis_raw", length = 300)
     private String basisRaw;
@@ -94,6 +98,8 @@ public class MetaRelation {
     public void setConfirmStatus(String confirmStatus) { this.confirmStatus = confirmStatus; }
     public String getCrossDomain() { return crossDomain; }
     public void setCrossDomain(String crossDomain) { this.crossDomain = crossDomain; }
+    public String getCardinality() { return cardinality; }
+    public void setCardinality(String cardinality) { this.cardinality = cardinality; }
     public String getBasisRaw() { return basisRaw; }
     public void setBasisRaw(String basisRaw) { this.basisRaw = basisRaw; }
     public String getSourceDoc() { return sourceDoc; }

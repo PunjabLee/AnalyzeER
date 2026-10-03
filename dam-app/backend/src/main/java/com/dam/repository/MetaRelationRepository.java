@@ -10,4 +10,6 @@ public interface MetaRelationRepository extends JpaRepository<MetaRelation, Long
     List<MetaRelation> findByFromAssetId(Long fromAssetId);
 
     List<MetaRelation> findByToAssetId(Long toAssetId);
+
+    List<MetaRelation> findByOrigin(String origin);
 }

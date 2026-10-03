@@ -1,6 +1,6 @@
-# dam-app · 数据资产管理应用（M0+M1+M2 批次）
+# dam-app · 数据资产管理应用（M0+M1+M2+M3-1 批次）
 
-按 [PLAN.md](../PLAN.md) §6 分期路线图实施，本目录为 **M0（POC 奠基）+ M1（资产目录 MVP）+ M2（术语·三级模型·版本·轻量拖拽）** 批次的可运行代码。
+按 [PLAN.md](../PLAN.md) §6 分期路线图实施，本目录为 **M0（POC 奠基）+ M1（资产目录 MVP）+ M2（术语·三级模型·版本·轻量拖拽）+ M3-1（血缘关系通道① · ER 证据叠加）** 批次的可运行代码。
 
 ## M0 交付内容
 
@@ -47,7 +47,7 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 | 模块 | 内容 | 状态 |
 |---|---|---|
 | 分级标签摄取 | `ErModelCensusParser`+`GradingAssigner`：00-总览 域清单 → A/B/C=349/853/120、18 域+OT 入 `meta_domain` | ✅ |
-| 关系摄取（当前单通道） | `LogicalModelRelationParser`：03-逻辑数据模型 `FK[目标·依据]` → 413 边（五级证据+置信度+待确认；含 `M1RelationIntegrityTest` "源表必含该列"强不变式守卫）。ER 证据摘录第二通道经批准正式推迟至 M3 首子任务（PLAN §1.1 决策注记 2026-10-03） | ✅ |
+| 关系摄取（通道②·基线） | `LogicalModelRelationParser`：03-逻辑数据模型 `FK[目标·依据]` → 413 边（五级证据+置信度+待确认；含 `M1RelationIntegrityTest` "源表必含该列"强不变式守卫）。ER 证据第二通道（①）已于 **M3-1** 落地，见下方 | ✅ |
 | 治理属性 | 认证/敏感级/废弃/Owner/Steward：`PATCH /api/assets/{id}/governance` | ✅ |
 | 检索与导出 | 域/分级 facets 钻取；`/api/export/json`、`/api/export/yaml`（schema=dam-meta/1，按 asset_urn 可 diff） | ✅ |
 | 字典（M2 初版） | `dict_standard_field/dict_code_value/dict_naming_rule` CRUD + 种子 | ✅ |
@@ -91,6 +91,22 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - ⚠️ 运维注记：既有 MySQL 库若历史遗留无名唯一索引，命名约束会并存（均生效、无害）；如需彻底清理可 `DROP TABLE meta_version, meta_version_item;` 由应用重建。集合签名口径变更对**未重打基线**的旧快照会触发一次 FULL 重钉（哨兵自动处理）。
 
 > 手工兜底 DDL（`ddl-auto=update` 未补建命名约束时）：`ALTER TABLE meta_version ADD CONSTRAINT uk_meta_version_no UNIQUE (version_no);`
+
+## M3-1 交付内容（血缘关系通道① · ER 证据叠加，`mvn test` 51/51）
+
+按 M3 起步决策“**先通道①再画布**”，落实 PLAN D1（ER 证据通道为 M3 首个子任务）：
+
+| 模块 | 内容 | 状态 |
+|---|---|---|
+| 通道①解析 | `ErDiagramRelationParser`：解析 `01-ER图/*.md` 的 **Mermaid `erDiagram` 关系行**（两端为真实表名+基数符号+`[证据]`标注+`alias.col`），机读可解且不臆造（相比稀疏、中文实体名的“关系要点与证据摘录”表更完整、可对齐目录） | ✅ |
+| 通道①叠加 | `ErEvidenceIngestionService`：严格校验两端表均存在且子表真实拥有 FK 列（镜像 B-1）才入库；**ER 优先**将 `cardinality` 与更强五级证据叠加到②已有边（origin 不变以保 413 基准），目录内新边以 `origin=ER证据摘录` 新增 | ✅ |
+| 新列 | `meta_relation.cardinality`（`1:1`/`1:N`）——通道②无法提供、通道①独有 | ✅ |
+| 强不变式 | `ErEvidenceIntegrityTest`：每条 ER 边两端目录可解/子表含列/基数与证据枚举合法/1:1与注释明示证据已带入 | ✅ |
+| 启动接入 | `StartupIngestor` 在②之后、以 `findByOrigin("ER证据摘录")` 为空作幂等守卫叠加① | ✅ |
+
+- 实测（H2 与真实 MySQL 8 一致）：`ErReport{matched=194, cardinalityFilled=194, evidenceUpgraded=5, newEdges=30, skipped=232}` → 总边 413② + 30① = **443**（218 个 1:N + 6 个 1:1 + 219 个无基数）；skipped=232 均为端点不在目录/子表不拥列/纯散文行（零臆造故舍弃）。
+- 不 drop 就地升级复验：ddl-auto 自动为既有 `meta_relation` 补 `cardinality` 列，②因 count>0 不重建、①因无 ER 边而叠加。
+- 通道①的消费方（血缘画布与确认工作台）属后续 M3 批次（递归 CTE 血缘查询 → 确认闭环 → X6 画布连线编辑）。
 
 ## 关键设计口径（对齐评审结论）
 
