@@ -92,20 +92,21 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 
 > 手工兜底 DDL（`ddl-auto=update` 未补建命名约束时）：`ALTER TABLE meta_version ADD CONSTRAINT uk_meta_version_no UNIQUE (version_no);`
 
-## M3-1 交付内容（血缘关系通道① · ER 证据叠加，`mvn test` 61/61）
+## M3-1 交付内容（血缘关系通道① · ER 证据叠加，`mvn test` 67/67）
 
 按 M3 起步决策“**先通道①再画布**”，落实 PLAN D1（ER 证据通道为 M3 首个子任务）：
 
 | 模块 | 内容 | 状态 |
 |---|---|---|
-| 通道①解析 | `ErDiagramRelationParser`：解析 `01-ER图/*.md` 的 **Mermaid `erDiagram` 关系行**（两端为真实表名+基数符号+`[证据]`标注+`alias.col`），机读可解且不臆造（相比稀疏、中文实体名的“关系要点与证据摘录”表更完整、可对齐目录）。**关系符号左右标记（crow-foot）判定多端归属与基数**（共 12 种符号 → `ONE_TO_MANY`/`MANY_TO_ONE`/`ONE_TO_ONE`/`MANY_TO_MANY`），不再盲定“右恒为子表” | ✅ |
-| 通道①叠加 | `ErEvidenceIngestionService`：严格校验两端表均存在且子表真实拥有 FK 列（镜像 B-1）才入库；**ER 优先**将 `cardinality` 与更强五级证据叠加到②已有边（origin 不变以保 413 基准），目录内新边以 `origin=ER证据摘录` 新增。**消解键 `(from_asset_id, from_column)`**：精确目标命中→enrich；②散文未解析目标→按 ER 消解；②已指向另一具体目标→标记冲突交确认台（不静默覆盖）。**M:N 不建单方向边、歧义 1:1 仅 enrich 不新建、同列名反向已存在则绝不新建反向假边** | ✅ |
-| 新列 | `meta_relation.cardinality`（`1:1`/`1:N`）——通道②无法提供、通道①独有（`N:M` 不物化为单方向边，故不落库） | ✅ |
-| 强不变式 | `ErEvidenceIntegrityTest`：每条 ER 边两端目录可解/子表含列/基数与证据枚举合法/1:1与注释明示证据已带入/**无同列名反向对（S1 方向守卫）/无 M:N 单边/基数与目标列达规模下限**；`ErDiagramRelationParserTest` 锁定 12 种符号分类与方向 | ✅ |
+| 通道①解析 | `ErDiagramRelationParser`：解析 `01-ER图/*.md` 的 **Mermaid `erDiagram` 关系行**（两端为真实表名+基数符号+`[证据]`标注+`alias.col`）。**关系符号左右 crow-foot 标记判定多端与基数**（共 12 种符号 → `ONE_TO_MANY`/`MANY_TO_ONE`/`ONE_TO_ONE`/`MANY_TO_MANY`），不再盲定“右恒为子表”；**两道信任闸门**——符号与标签自述基数冲突（如 `||--o{` 却写 `"N:N"`）降级 `AMBIGUOUS`不建不消解、单侧缺标记（`A ..o{ B`）归 `UNSUPPORTED_SYMBOL`（计数不静默丢） | ✅ |
+| 通道①叠加 | `ErEvidenceIngestionService`：严格校验两端表均存在且子表真实拥有 FK 列（镜像 B-1）才入库；**ER 优先**将 `cardinality` 与更强证据叠加到②已有边（origin 不变以保 413 基准），新边以 `origin=ER证据摘录` 新增。**消解键 `(from_asset_id, from_column)`**：精确目标→enrich；②散文未解析目标→**双闸门消解**（需同时满足：ER 行无自证否认词如“非id/无 id/多值/多单号串/待确认/名称关联”且该位置全语料唯一父候选），否则只写候选不钉 `to_asset_id`；②已指向另一具体目标→标冲突。**永不覆盖②的 `target_raw`**（只追记 `basis_raw`）；M:N/歧义 1:1/同列反向均不新建 | ✅ |
+| 新列 | `meta_relation.cardinality`（`1:1`/`1:N`）——通道②无法提供、通道①独有（`N:M` 不物化为单方向边、故不落库） | ✅ |
+| 强不变式 | `ErEvidenceIntegrityTest`：每条 ER 边两端目录可解/子表含列/基数与证据枚举合法/**无同列名反向对（S1）/无 M:N 单边/新建 ER 边全为 1:N/含『未消解』注记的边 `to_asset_id` 必为 NULL（S1-1）/基数与目标列规模下限**；`ErDiagramRelationParserTest` 锁定 12 种符号分类/交叉降级/裸 id 不当候选 | ✅ |
 | 启动接入 | `StartupIngestor` 在②之后、以 `!existsByOrigin(ORIGIN_ER)` 作幂等守卫叠加①（`ORIGIN_ER` 为服务公有常量） | ✅ |
 
-- 实测（H2 与真实 MySQL 8 逐位一致）：`ErReport{matched=290, cardinalityFilled=290, evidenceUpgraded=7, newEdges=14, resolvedProse=16, conflicts=3, skippedEndpoint=14, skippedColumn=113, skippedMulti=3, skippedAmbiguous=5, skippedReverse=1}` → 总边 413② + 14① = **427**（②经 ER 叠加补 279 个 1:N + 11 个 1:1、余 123 无基数；①新增 14 全为 1:N）；**同列名反向对 = 0**（S1 假边已消除）。
-- 评审整改（2026-10-03 专家评审团对 `39fb101`）：**S1** 关系符号左右标记定多端与方向 + 反向同列兜底（消除方向倒置假边）；**S2** 全 12 种符号识别基数（M:N/`||..o|` 不再静默写 1:N）、放宽 `ALIAS_COL` 去长度门槛并支持 2 字符 `id`、目标分隔符并入 `->/=/↔`、消解键改 `(from,col)` 以消解②散文边并标记冲突、`POST /relations` 端点链式叠加①（+独立 `/er-evidence`）；**S3** `cardinality` 入导出与 `RelationView`、证据升级追记 ER 出处、`ORIGIN_ER` 常量化 + `existsByOrigin` 幂等守卫。旧口径 `matched=194/new=30/总443` 系 S1 缺陷下多建倒置假边所致，已由上述严格判定取代。
+- 实测（H2 与真实 MySQL 8 逐位一致）：`ErReport{matched=183, cardinalityFilled=175, evidenceUpgraded=5, newEdges=74, resolvedProse=5, deferredDenial=1, deferredMulti=5, conflicts=0, skippedEndpoint=11, skippedNoColumn=32, skippedNotOwned=8, skippedMulti=3, skippedAmbiguous=5, skippedUnsupported=13, cardinalityClash=126, skippedReverse=1}` → 总边 413② + 74① = **487**（②经 ER 叠加补基数、①新增 74 全为 1:N）；**同列名反向对 = 0、全 487 边子表均真实含 FK 列**（零臆造）。
+- 评审整改（针对首轮整改 `081f6d2` 的第二轮专家评审）：**S1（新发现·目标消解臆造）**——首轮修好了方向，但 `resolvedProse` 用单条 ER 行将②散文边钉到具体父表（部分行自述 N:N/多单号串/非id）→ 改为双闸门（否认词 + 多父候选预扫）且永不覆盖 `target_raw`；符号↔标签基数零交叉→新增交叉校验降级 AMBIGUOUS。**S2**——单侧缺标记的 13 行静默丢弃→UNSUPPORTED_SYMBOL 计数；`ALIAS_COL` 放宽后裸 `id` 可被子表 PK 平凡满足→拆为“FK 候选排除裸 id、目标列允许 id”；无 alias 前缀的真实边（如 `jf_statement.customer_reconciliation_id`）被丢→无 alias 兑底提 `*_id/_code`。`mvn test` 67/67（新增 6 例）。上一版 `matched=290/new=14/总427` 口径因本轮交叉降级与消解收紧而变（新增边由无 alias 兑底救回真实边而变多），已以本行数据为准。
+- 接口：`StartupIngestor` 自启链式跑②→①；`POST /api/ingest/relations` 全重建②后重叠加①；**`POST /api/ingest/er-evidence` 仅重叠加①不碰②**（避免 `deleteAllInBatch` 重置人工确认状态）。
 - 不 drop 就地升级复验：ddl-auto 自动为既有 `meta_relation` 补 `cardinality` 列，②因 count>0 不重建、①因无 ER 边而叠加。
 - 通道①的消费方（血缘画布与确认工作台）属后续 M3 批次（递归 CTE 血缘查询 → 确认闭环 → X6 画布连线编辑）。
 

@@ -128,15 +128,39 @@ class ErEvidenceIntegrityTest {
     }
 
     @Test
+    void selfDenyingOrMultiParentCandidateNeverPinsTarget() {
+        // S1-1/S1-2 守卫：被判定「自证否认」或「多父候选」的 ER 候选只写进 basis_raw（带『未消解』），
+        // 绝不把②散文边的 to_asset_id 钉死——命中该注记的边必须仍未解析目标。
+        List<MetaRelation> offenders = relationRepo.findAll().stream()
+                .filter(r -> r.getBasisRaw() != null && r.getBasisRaw().contains("未消解"))
+                .filter(r -> r.getToAssetId() != null)
+                .toList();
+        assertTrue(offenders.isEmpty(),
+                "含『未消解』注记的边不得有具体 to_asset_id，实得 " + offenders.size() + " 条");
+    }
+
+    @Test
+    void everyNewErEdgeIsDirectedOneToMany() {
+        // 只有方向明确的 一↔多 才允许新建；1:1(歧义)/M:N/AMBIGUOUS 从不新建，
+        // 故 origin=ER证据摘录 的新建边基数必恒为 1:N。
+        List<MetaRelation> er = relationRepo.findByOrigin("ER证据摘录");
+        assertFalse(er.isEmpty(), "通道①应至少新建若干边");
+        List<MetaRelation> bad = er.stream()
+                .filter(r -> !"1:N".equals(r.getCardinality())).toList();
+        assertTrue(bad.isEmpty(), "ER 新建边应全为 1:N，异常 " + bad.size() + " 条");
+    }
+
+    @Test
     void overlayBringsCardinalityAndTargetColumnsAtScale() {
         // 通道①的价值主张（基数 + 目标列）必须有规模下限，否则正则/方向被改坏时 CI 无法察觉。
         List<MetaRelation> all = relationRepo.findAll();
         long withCardinality = all.stream().filter(r -> r.getCardinality() != null).count();
-        assertTrue(withCardinality >= 300, "ER 叠加应带入大量基数，实得=" + withCardinality);
+        // 交叉校验会保守地将符号↔标签基数冲突的行降级为 AMBIGUOUS（不写基数），故下限较前降。
+        assertTrue(withCardinality >= 200, "ER 叠加应带入大量基数，实得=" + withCardinality);
         long withToCol = all.stream()
                 .filter(r -> r.getCardinality() != null && r.getToColumn() != null).count();
         assertTrue(withToCol >= 25, "ER 的 ->/=/↔ 目标列应被大量补全，实得=" + withToCol);
-        // ②基线 413 + ER 新增真实边（方向兜底后严格判定，倒置假边已剔除，新增=14）；留少量余量防抖动。
+        // ②基线 413 + ER 新增真实边（无 alias 兑底救回后新增变多）；下限防回归。
         assertTrue(relationRepo.count() >= 425, "总边=②413 + ER 新增，应 >= 425，实得=" + relationRepo.count());
     }
 }

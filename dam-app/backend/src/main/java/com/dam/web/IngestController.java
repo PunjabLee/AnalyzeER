@@ -57,4 +57,15 @@ public class IngestController {
     /** record of both relation channels: channel-2 (逻辑FK列) rebuild + channel-1 (ER证据) overlay. */
     public record RelationStageResult(RelationIngestionService.RelationReport channel2,
                                       ErEvidenceIngestionService.ErReport channel1) { }
+
+    /**
+     * POST /api/ingest/er-evidence ; re-overlays ER evidence (channel-1) onto the CURRENT relation
+     * store WITHOUT rebuilding channel-2. Unlike /relations (whose channel-2 stage does a full
+     * delete+rebuild that resets every confirm_status to 待确认), this is safe to call after human
+     * confirmation work: it re-enriches cardinality/evidence idempotently and preserves 已确认/驳回.
+     */
+    @PostMapping("/er-evidence")
+    public ErEvidenceIngestionService.ErReport ingestErEvidence(@RequestParam(required = false) String dir) {
+        return erEvidenceService.ingest(dir);
+    }
 }
