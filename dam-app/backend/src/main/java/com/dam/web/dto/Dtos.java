@@ -26,6 +26,7 @@ public final class Dtos {
             Long stewardId) { }
 
     public record ColumnView(
+            Long id,
             Integer ordinal,
             String name,
             String type,
@@ -69,4 +70,11 @@ public final class Dtos {
     public record Facets(java.util.Map<String, Long> domains,
                          java.util.Map<String, Long> gradings,
                          long total) { }
+
+    /**
+     * Column reorder payload (M9.1 field-drag-sort): the full ordered list of column ids
+     * for one asset. Ordinals are re-assigned 0..n-1 by position. Must cover exactly the
+     * asset's current columns (no missing / foreign ids).
+     */
+    public record ColumnOrder(java.util.List<Long> columnIds) { }
 }

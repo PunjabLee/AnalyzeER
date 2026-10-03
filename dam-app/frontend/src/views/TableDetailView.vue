@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api, type AssetDetail, type GovernanceUpdate, type RelationView } from '../api'
+import { api, type AssetDetail, type ColumnView, type GovernanceUpdate, type RelationView } from '../api'
 import { hasRole, isLoggedIn } from '../auth'
 
 const route = useRoute()
@@ -16,6 +16,37 @@ const form = ref<GovernanceUpdate>({ certificationStatus: undefined, sensitivity
 
 const canEdit = computed(() => isLoggedIn() && hasRole('ADMIN', 'STEWARD'))
 
+// M9.1 field drag-sort: local editable order of columns + save
+const cols = ref<ColumnView[]>([])
+const colDirty = ref(false)
+const dragIndex = ref<number | null>(null)
+
+function onDragStart(i: number) { dragIndex.value = i }
+function onDragOver(e: DragEvent) { e.preventDefault() }
+function onDrop(i: number) {
+  const from = dragIndex.value
+  dragIndex.value = null
+  if (from === null || from === i) return
+  const arr = [...cols.value]
+  const [moved] = arr.splice(from, 1)
+  arr.splice(i, 0, moved)
+  cols.value = arr
+  colDirty.value = true
+}
+
+async function saveOrder() {
+  const id = detail.value?.summary.id
+  if (!id) return
+  error.value = ''
+  try {
+    cols.value = await api.reorderColumns(id, cols.value.map(c => c.id))
+    colDirty.value = false
+    saved.value = '字段顺序已保存（见审计日志）'
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
 // relations split for the two tables
 const outRels = computed<RelationView[]>(() => detail.value?.relations.filter(r => r.direction === 'out') || [])
 const inRels = computed<RelationView[]>(() => detail.value?.relations.filter(r => r.direction === 'in') || [])
@@ -26,6 +57,8 @@ async function load(name: string) {
   saved.value = ''
   try {
     detail.value = await api.detailByName(name)
+    cols.value = [...detail.value.columns]
+    colDirty.value = false
     form.value = {
       certificationStatus: detail.value.summary.certificationStatus || undefined,
       sensitivityLevel: detail.value.summary.sensitivityLevel || undefined,
@@ -124,7 +157,11 @@ watch(() => route.params.name, n => { if (n) load(String(n)) })
         </table>
       </div>
 
-      <h3>字段（{{ detail.columns.length }} 列）</h3>
+      <h3>
+        字段（{{ cols.length }} 列）
+        <button v-if="canEdit && colDirty" class="mini" @click="saveOrder">保存顺序</button>
+        <small v-if="canEdit" class="muted">拖动行可调整字段顺序（M9.1）</small>
+      </h3>
       <table class="grid">
         <thead>
           <tr>
@@ -133,9 +170,15 @@ watch(() => route.params.name, n => { if (n) load(String(n)) })
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in detail.columns" :key="c.ordinal">
+          <tr
+            v-for="(c, i) in cols" :key="c.id"
+            :draggable="canEdit"
+            class="dragger"
+            @dragstart="onDragStart(i)"
+            @dragover="onDragOver"
+            @drop="onDrop(i)">
             <td>{{ c.ordinal }}</td>
-            <td class="fname">{{ c.name }}</td>
+            <td class="fname">⋮ {{ c.name }}</td>
             <td>{{ c.type }}</td>
             <td>{{ c.nullable }}</td>
             <td>{{ c.defaultVal ?? '' }}</td>
@@ -166,6 +209,9 @@ table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
 table.grid th, table.grid td { border: 1px solid #eaeaea; padding: 6px 8px; text-align: left; }
 table.grid thead th { background: #f7f7f7; position: sticky; top: 0; }
 .fname { font-family: ui-monospace, Menlo, monospace; color: #b7791f; }
+.dragger[draggable="true"] { cursor: grab; }
+.dragger:hover td { background: #fffaf0; }
+button.mini { font-size: 12px; padding: 3px 8px; margin-left: 10px; background: #2f855a; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .meaning { max-width: 480px; }
 .rels a { color: #2b6cb0; cursor: pointer; text-decoration: underline; }
 </style>

@@ -11,6 +11,7 @@ import com.dam.repository.SysUserRepository;
 import com.dam.web.dto.Dtos.AssetDetail;
 import com.dam.web.dto.Dtos.AssetSummary;
 import com.dam.web.dto.Dtos.ColumnView;
+import com.dam.web.dto.Dtos.ColumnOrder;
 import com.dam.web.dto.Dtos.Facets;
 import com.dam.web.dto.Dtos.GovernanceUpdate;
 import com.dam.web.dto.Dtos.RelationView;
@@ -181,6 +182,34 @@ public class AssetController {
         }
     }
 
+    /**
+     * M9.1 field drag-sort: persist a new column order for an asset. The payload is the full
+     * ordered id list; ordinals are re-assigned 0..n-1. Rejects (400) any payload that does not
+     * cover exactly this asset's columns, so a stale/dragged foreign id can never corrupt order.
+     */
+    @PatchMapping("/{id}/columns/order")
+    public ResponseEntity<List<ColumnView>> reorderColumns(@PathVariable Long id,
+                                                           @RequestBody ColumnOrder req) {
+        if (assetRepo.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<MetaColumn> cols = columnRepo.findByAssetIdOrderByOrdinalAsc(id);
+        Map<Long, MetaColumn> byId = cols.stream()
+                .collect(Collectors.toMap(MetaColumn::getId, Function.identity()));
+        List<Long> ordered = req.columnIds() == null ? List.of() : req.columnIds();
+        if (ordered.size() != cols.size() || !byId.keySet().containsAll(ordered)) {
+            throw new IllegalArgumentException("列顺序必须恰好覆盖该表全部列（不含缺失或外表列）");
+        }
+        for (int i = 0; i < ordered.size(); i++) {
+            byId.get(ordered.get(i)).setOrdinal(i);
+        }
+        List<MetaColumn> saved = columnRepo.saveAll(cols);
+        audit.record("COLUMN_REORDER", id.toString(), ordered.size() + " columns");
+        return ResponseEntity.ok(saved.stream()
+                .sorted((a, b) -> Integer.compare(a.getOrdinal(), b.getOrdinal()))
+                .map(AssetController::toColumn).toList());
+    }
+
     private static RelationView toRelation(MetaRelation r, String direction,
                                           Function<Long, String> nameOf) {
         return new RelationView(r.getId(), direction,
@@ -198,7 +227,7 @@ public class AssetController {
     }
 
     static ColumnView toColumn(MetaColumn c) {
-        return new ColumnView(c.getOrdinal(), c.getName(), c.getType(), c.getNullable(),
+        return new ColumnView(c.getId(), c.getOrdinal(), c.getName(), c.getType(), c.getNullable(),
                 c.getDefaultVal(), c.getKeyHint(), c.getMeaning(), c.getSourceLayer());
     }
 }

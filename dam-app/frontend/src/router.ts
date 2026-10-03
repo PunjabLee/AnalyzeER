@@ -4,6 +4,7 @@ import { isLoggedIn } from './auth'
 import CatalogView from './views/CatalogView.vue'
 import TableDetailView from './views/TableDetailView.vue'
 import DictView from './views/DictView.vue'
+import GlossaryView from './views/GlossaryView.vue'
 import QualityView from './views/QualityView.vue'
 import AuditView from './views/AuditView.vue'
 import LoginView from './views/LoginView.vue'
@@ -12,6 +13,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', component: CatalogView },
   { path: '/table/:name', component: TableDetailView },
   { path: '/dict', component: DictView },
+  { path: '/glossary', component: GlossaryView },
   { path: '/quality', component: QualityView },
   { path: '/audit', component: AuditView, meta: { requiresLogin: true } },
   { path: '/login', component: LoginView }

@@ -16,6 +16,7 @@ function goLogout() {
       <nav>
         <router-link to="/">资产目录</router-link>
         <router-link to="/dict">数据字典</router-link>
+        <router-link to="/glossary">业务术语</router-link>
         <router-link to="/quality">数据质量</router-link>
         <router-link v-if="hasRole('ADMIN')" to="/audit">审计日志</router-link>
       </nav>

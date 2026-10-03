@@ -21,6 +21,7 @@ export interface AssetSummary {
 }
 
 export interface ColumnView {
+  id: number
   ordinal: number
   name: string
   type: string | null
@@ -174,6 +175,55 @@ export interface Facets {
   total: number
 }
 
+// business glossary (capability M3)
+export interface TermSummary {
+  id: number
+  name: string
+  domainCode: string | null
+  status: string
+  refCount: number
+}
+
+export interface RefView {
+  id: number
+  assetId: number | null
+  assetName: string | null
+  columnId: number | null
+  columnName: string | null
+  refType: string
+}
+
+export interface TermView {
+  id: number
+  name: string
+  definition: string | null
+  aliases: string | null
+  caliber: string | null
+  domainCode: string | null
+  ownerId: number | null
+  ownerName: string | null
+  status: string
+  note: string | null
+  refs: RefView[]
+}
+
+export interface TermUpsert {
+  name: string
+  definition?: string
+  aliases?: string
+  caliber?: string
+  domainCode?: string
+  ownerId?: number
+  status?: string
+  note?: string
+}
+
+export interface TermBinding {
+  assetId?: number
+  columnId?: number
+  refType?: string
+}
+
 export const api = {
   // catalog
   count: () => request<number>('/api/assets/count'),
@@ -189,6 +239,24 @@ export const api = {
   detailByName: (name: string) => request<AssetDetail>('/api/assets/by-name/' + encodeURIComponent(name)),
   patchGovernance: (assetId: number, g: GovernanceUpdate) =>
     patch<AssetSummary>('/api/assets/' + assetId + '/governance', g),
+
+  // M9.1 field drag-sort: persist a new full column order for an asset
+  reorderColumns: (assetId: number, columnIds: number[]) =>
+    patch<ColumnView[]>('/api/assets/' + assetId + '/columns/order', { columnIds }),
+
+  // business glossary (M3)
+  glossaryList: (domain?: string, keyword?: string) =>
+    request<TermSummary[]>('/api/glossary/terms' +
+      (domain ? '?domain=' + encodeURIComponent(domain) : '') +
+      (keyword ? (domain ? '&' : '?') + 'keyword=' + encodeURIComponent(keyword) : '')),
+  glossaryGet: (id: number) => request<TermView>('/api/glossary/terms/' + id),
+  glossaryCreate: (t: TermUpsert) => post<TermView>('/api/glossary/terms', t),
+  glossaryUpdate: (id: number, t: TermUpsert) => put<TermView>('/api/glossary/terms/' + id, t),
+  glossaryDelete: (id: number) => del('/api/glossary/terms/' + id),
+  glossaryRefs: (id: number) => request<RefView[]>('/api/glossary/terms/' + id + '/refs'),
+  glossaryBind: (id: number, b: TermBinding) => post<RefView>('/api/glossary/terms/' + id + '/refs', b),
+  glossaryUnbind: (refId: number) => del('/api/glossary/refs/' + refId),
+  glossaryByAsset: (assetId: number) => request<TermSummary[]>('/api/glossary/by-asset/' + assetId),
 
   // dictionary (M2)
   listFields: () => request<StandardField[]>('/api/dict/standard-fields'),
