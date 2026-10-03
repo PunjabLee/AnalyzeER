@@ -92,19 +92,20 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 
 > 手工兜底 DDL（`ddl-auto=update` 未补建命名约束时）：`ALTER TABLE meta_version ADD CONSTRAINT uk_meta_version_no UNIQUE (version_no);`
 
-## M3-1 交付内容（血缘关系通道① · ER 证据叠加，`mvn test` 51/51）
+## M3-1 交付内容（血缘关系通道① · ER 证据叠加，`mvn test` 61/61）
 
 按 M3 起步决策“**先通道①再画布**”，落实 PLAN D1（ER 证据通道为 M3 首个子任务）：
 
 | 模块 | 内容 | 状态 |
 |---|---|---|
-| 通道①解析 | `ErDiagramRelationParser`：解析 `01-ER图/*.md` 的 **Mermaid `erDiagram` 关系行**（两端为真实表名+基数符号+`[证据]`标注+`alias.col`），机读可解且不臆造（相比稀疏、中文实体名的“关系要点与证据摘录”表更完整、可对齐目录） | ✅ |
-| 通道①叠加 | `ErEvidenceIngestionService`：严格校验两端表均存在且子表真实拥有 FK 列（镜像 B-1）才入库；**ER 优先**将 `cardinality` 与更强五级证据叠加到②已有边（origin 不变以保 413 基准），目录内新边以 `origin=ER证据摘录` 新增 | ✅ |
-| 新列 | `meta_relation.cardinality`（`1:1`/`1:N`）——通道②无法提供、通道①独有 | ✅ |
-| 强不变式 | `ErEvidenceIntegrityTest`：每条 ER 边两端目录可解/子表含列/基数与证据枚举合法/1:1与注释明示证据已带入 | ✅ |
-| 启动接入 | `StartupIngestor` 在②之后、以 `findByOrigin("ER证据摘录")` 为空作幂等守卫叠加① | ✅ |
+| 通道①解析 | `ErDiagramRelationParser`：解析 `01-ER图/*.md` 的 **Mermaid `erDiagram` 关系行**（两端为真实表名+基数符号+`[证据]`标注+`alias.col`），机读可解且不臆造（相比稀疏、中文实体名的“关系要点与证据摘录”表更完整、可对齐目录）。**关系符号左右标记（crow-foot）判定多端归属与基数**（共 12 种符号 → `ONE_TO_MANY`/`MANY_TO_ONE`/`ONE_TO_ONE`/`MANY_TO_MANY`），不再盲定“右恒为子表” | ✅ |
+| 通道①叠加 | `ErEvidenceIngestionService`：严格校验两端表均存在且子表真实拥有 FK 列（镜像 B-1）才入库；**ER 优先**将 `cardinality` 与更强五级证据叠加到②已有边（origin 不变以保 413 基准），目录内新边以 `origin=ER证据摘录` 新增。**消解键 `(from_asset_id, from_column)`**：精确目标命中→enrich；②散文未解析目标→按 ER 消解；②已指向另一具体目标→标记冲突交确认台（不静默覆盖）。**M:N 不建单方向边、歧义 1:1 仅 enrich 不新建、同列名反向已存在则绝不新建反向假边** | ✅ |
+| 新列 | `meta_relation.cardinality`（`1:1`/`1:N`）——通道②无法提供、通道①独有（`N:M` 不物化为单方向边，故不落库） | ✅ |
+| 强不变式 | `ErEvidenceIntegrityTest`：每条 ER 边两端目录可解/子表含列/基数与证据枚举合法/1:1与注释明示证据已带入/**无同列名反向对（S1 方向守卫）/无 M:N 单边/基数与目标列达规模下限**；`ErDiagramRelationParserTest` 锁定 12 种符号分类与方向 | ✅ |
+| 启动接入 | `StartupIngestor` 在②之后、以 `!existsByOrigin(ORIGIN_ER)` 作幂等守卫叠加①（`ORIGIN_ER` 为服务公有常量） | ✅ |
 
-- 实测（H2 与真实 MySQL 8 一致）：`ErReport{matched=194, cardinalityFilled=194, evidenceUpgraded=5, newEdges=30, skipped=232}` → 总边 413② + 30① = **443**（218 个 1:N + 6 个 1:1 + 219 个无基数）；skipped=232 均为端点不在目录/子表不拥列/纯散文行（零臆造故舍弃）。
+- 实测（H2 与真实 MySQL 8 逐位一致）：`ErReport{matched=290, cardinalityFilled=290, evidenceUpgraded=7, newEdges=14, resolvedProse=16, conflicts=3, skippedEndpoint=14, skippedColumn=113, skippedMulti=3, skippedAmbiguous=5, skippedReverse=1}` → 总边 413② + 14① = **427**（②经 ER 叠加补 279 个 1:N + 11 个 1:1、余 123 无基数；①新增 14 全为 1:N）；**同列名反向对 = 0**（S1 假边已消除）。
+- 评审整改（2026-10-03 专家评审团对 `39fb101`）：**S1** 关系符号左右标记定多端与方向 + 反向同列兜底（消除方向倒置假边）；**S2** 全 12 种符号识别基数（M:N/`||..o|` 不再静默写 1:N）、放宽 `ALIAS_COL` 去长度门槛并支持 2 字符 `id`、目标分隔符并入 `->/=/↔`、消解键改 `(from,col)` 以消解②散文边并标记冲突、`POST /relations` 端点链式叠加①（+独立 `/er-evidence`）；**S3** `cardinality` 入导出与 `RelationView`、证据升级追记 ER 出处、`ORIGIN_ER` 常量化 + `existsByOrigin` 幂等守卫。旧口径 `matched=194/new=30/总443` 系 S1 缺陷下多建倒置假边所致，已由上述严格判定取代。
 - 不 drop 就地升级复验：ddl-auto 自动为既有 `meta_relation` 补 `cardinality` 列，②因 count>0 不重建、①因无 ER 边而叠加。
 - 通道①的消费方（血缘画布与确认工作台）属后续 M3 批次（递归 CTE 血缘查询 → 确认闭环 → X6 画布连线编辑）。
 

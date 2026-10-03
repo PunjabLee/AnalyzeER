@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -94,5 +95,48 @@ class ErEvidenceIntegrityTest {
         boolean hasExplicit = relationRepo.findByOrigin("ER证据摘录").stream()
                 .anyMatch(r -> "注释明示".equals(r.getEvidenceLevel()));
         assertTrue(hasExplicit, "ER 通道应带入 注释明示 级别证据");
+    }
+
+    @Test
+    void noReversedSameColumnEdgePairsAndNoManyToManyEdge() {
+        // S1 守卫：不得同时存在 (A.col -> B) 与 (B.col -> A)（同列名反向对 = 方向倒置假边的特征），
+        // 且 M:N 关系从不被建成单方向边。
+        List<MetaRelation> directed = relationRepo.findAll().stream()
+                .filter(r -> r.getToAssetId() != null && r.getFromColumn() != null).toList();
+
+        assertTrue(directed.stream().noneMatch(r -> "N:M".equals(r.getCardinality())),
+                "M:N 关系不应被物化为单方向边");
+
+        Map<Long, String> nameById = assetRepo.findAll().stream()
+                .collect(Collectors.toMap(MetaAsset::getId, MetaAsset::getName));
+        Set<String> forward = new HashSet<>();
+        for (MetaRelation r : directed) {
+            forward.add(r.getFromAssetId() + "\u0001" + r.getToAssetId() + "\u0001"
+                    + r.getFromColumn().toLowerCase(Locale.ROOT));
+        }
+        List<String> reversed = directed.stream()
+                .filter(r -> !r.getFromAssetId().equals(r.getToAssetId()))   // 排除合法自关联
+                .filter(r -> forward.contains(r.getToAssetId() + "\u0001" + r.getFromAssetId() + "\u0001"
+                        + r.getFromColumn().toLowerCase(Locale.ROOT)))
+                .map(r -> String.format("%s.%s -> %s  (反向 %s.%s -> %s 同时存在)",
+                        nameById.get(r.getFromAssetId()), r.getFromColumn(),
+                        nameById.get(r.getToAssetId()), nameById.get(r.getToAssetId()),
+                        r.getFromColumn(), nameById.get(r.getFromAssetId())))
+                .distinct().toList();
+        assertTrue(reversed.isEmpty(),
+                "发现方向倒置的反向同列对（S1）：\n" + String.join("\n", reversed));
+    }
+
+    @Test
+    void overlayBringsCardinalityAndTargetColumnsAtScale() {
+        // 通道①的价值主张（基数 + 目标列）必须有规模下限，否则正则/方向被改坏时 CI 无法察觉。
+        List<MetaRelation> all = relationRepo.findAll();
+        long withCardinality = all.stream().filter(r -> r.getCardinality() != null).count();
+        assertTrue(withCardinality >= 300, "ER 叠加应带入大量基数，实得=" + withCardinality);
+        long withToCol = all.stream()
+                .filter(r -> r.getCardinality() != null && r.getToColumn() != null).count();
+        assertTrue(withToCol >= 25, "ER 的 ->/=/↔ 目标列应被大量补全，实得=" + withToCol);
+        // ②基线 413 + ER 新增真实边（方向兜底后严格判定，倒置假边已剔除，新增=14）；留少量余量防抖动。
+        assertTrue(relationRepo.count() >= 425, "总边=②413 + ER 新增，应 >= 425，实得=" + relationRepo.count());
     }
 }

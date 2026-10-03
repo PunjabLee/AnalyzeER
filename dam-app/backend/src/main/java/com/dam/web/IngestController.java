@@ -1,6 +1,7 @@
 package com.dam.web;
 
 import com.dam.ingest.DdlIngestionService;
+import com.dam.ingest.ErEvidenceIngestionService;
 import com.dam.ingest.ErModelLabelsIngestionService;
 import com.dam.ingest.IngestReport;
 import com.dam.ingest.RelationIngestionService;
@@ -16,13 +17,16 @@ public class IngestController {
     private final DdlIngestionService ingestionService;
     private final ErModelLabelsIngestionService labelsService;
     private final RelationIngestionService relationService;
+    private final ErEvidenceIngestionService erEvidenceService;
 
     public IngestController(DdlIngestionService ingestionService,
                             ErModelLabelsIngestionService labelsService,
-                            RelationIngestionService relationService) {
+                            RelationIngestionService relationService,
+                            ErEvidenceIngestionService erEvidenceService) {
         this.ingestionService = ingestionService;
         this.labelsService = labelsService;
         this.relationService = relationService;
+        this.erEvidenceService = erEvidenceService;
     }
 
     /** POST /api/ingest/ddl?path=<optional sql path> ; empty path -> resolve default test_erp.sql */
@@ -37,9 +41,20 @@ public class IngestController {
         return labelsService.ingest(dir);
     }
 
-    /** POST /api/ingest/relations ; ingers FK[...] edges from 03-逻辑数据模型 (relation channel, M1.1) */
+    /**
+     * POST /api/ingest/relations ; rebuilds FK[...] edges from 03-逻辑数据模型 (channel-2) and then
+     * re-overlays ER evidence (channel-1). Channel-2 does a full delete+rebuild, so the overlay must
+     * follow here too — otherwise a manual channel-2 re-run would silently drop the cardinality and
+     * all ER证据摘录 edges until the next restart.
+     */
     @PostMapping("/relations")
-    public RelationIngestionService.RelationReport ingestRelations(@RequestParam(required = false) String dir) {
-        return relationService.ingest(dir);
+    public RelationStageResult ingestRelations(@RequestParam(required = false) String dir) {
+        RelationIngestionService.RelationReport channel2 = relationService.ingest(dir);
+        ErEvidenceIngestionService.ErReport channel1 = erEvidenceService.ingest(dir);
+        return new RelationStageResult(channel2, channel1);
     }
+
+    /** record of both relation channels: channel-2 (逻辑FK列) rebuild + channel-1 (ER证据) overlay. */
+    public record RelationStageResult(RelationIngestionService.RelationReport channel2,
+                                      ErEvidenceIngestionService.ErReport channel1) { }
 }

@@ -46,6 +46,7 @@ public final class Dtos {
             String toColumn,
             String targetRaw,
             String evidenceLevel,
+            String cardinality,     // 1:1 / 1:N / N:M (channel-1 ER overlay; null if not overlaid)
             String origin,
             Double confidence,
             String confirmStatus,

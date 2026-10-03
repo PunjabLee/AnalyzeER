@@ -63,7 +63,7 @@ public class StartupIngestor {
             }
             // M3: overlay ER evidence (cardinality + evidence upgrade) from 01-ER图 (relation channel-1)
             try {
-                if (assetRepo.count() > 0 && relRepo.findByOrigin("ER证据摘录").isEmpty()) {
+                if (assetRepo.count() > 0 && !relRepo.existsByOrigin(ErEvidenceIngestionService.ORIGIN_ER)) {
                     log.info("Overlaying ER evidence from 01-ER图...");
                     log.info("ER evidence ingest done: {}", erEvidenceService.ingest(null));
                 }

@@ -1,5 +1,6 @@
 package com.dam.parser;
 
+import com.dam.parser.ParsedErRelation.Kind;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -16,25 +17,28 @@ import java.util.regex.Pattern;
  * <p>Consumed shape (inside a ```mermaid fenced block):
  * <pre>
  *   jf_customer ||--o{ jf_sales_order : "1:N [命名推断] order.customer_id -&gt; customer.id (NOT NULL)"
- *   jf_sales_order ||--o| jf_sales_order_cus : "1:1 [命名推断] cus.sales_order_id"
+ *   jf_product_color_coordina_mapping }o--o{ jf_product : "M:N [命名推断·编码] pccm.sku -&gt; product.sku"
  * </pre>
- * Only lines matching {@code <table> <symbol> <table> : "label"} are taken; entity-definition
- * lines ({@code jf_x { bigint id PK "..." }}) and comments never match. The FK column candidates
- * are lifted from {@code alias.col} tokens; those after {@code ->} become the target column.
- * Catalog validation (endpoints exist / child really owns the column) is the caller's job.
+ * The relationship symbol's LEFT and RIGHT crow-foot markers decide the {@link Kind}: {@code }} on
+ * the left or {@code &#123;} on the right mark the "many" (FK-owning) side; a line whose markers are
+ * both "one/optional" (e.g. {@code ||--o|}) is 1:1 with an ambiguous FK side; one with BOTH many
+ * (e.g. {@code }o--o{}) is M:N. Cardinality/evidence are derived here; catalog validation and the
+ * actual child/parent assignment happen in the ingestion service, which never trusts prose.
  */
 public final class ErDiagramRelationParser {
 
     private static final Pattern FENCE = Pattern.compile("^```\\s*mermaid\\s*$");
     private static final Pattern ANY_FENCE = Pattern.compile("^```");
-    /** &lt;table&gt; &lt;symbol&gt; &lt;table&gt; : "label"  (symbol is a non-space run like ||--o{) */
+    /** &lt;table&gt; &lt;symbol&gt; &lt;table&gt; : "label"  (symbol is a non-space marker run) */
     private static final Pattern RELATION = Pattern.compile(
             "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s+(\\S+)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*:\\s*\"(.*)\"\\s*$");
-    /** alias.col token; both parts at least 3 chars to avoid matching version-like fragments */
+    /** alias.col token; NO minimum length (ownership is enforced by the catalog check, not a heuristic) */
     private static final Pattern ALIAS_COL = Pattern.compile(
-            "([A-Za-z_][A-Za-z0-9_]{2,})\\.([A-Za-z_][A-Za-z0-9_]{2,})");
+            "([A-Za-z_][A-Za-z0-9_]*)\\.([A-Za-z_][A-Za-z0-9_]+)");
     private static final Pattern BRACKET = Pattern.compile("\\[([^\\]]+)\\]");
     private static final Pattern CROSS_DOMAIN = Pattern.compile("跨域\\s*[·\\-]?\\s*(D\\d{2})");
+    /** target-side separators, in priority order: arrow / bi-arrow / full-width & half-width equals */
+    private static final String[] TARGET_SEPARATORS = {"->", "↔", "＝", "="};
 
     private ErDiagramRelationParser() { }
 
@@ -58,14 +62,14 @@ public final class ErDiagramRelationParser {
             String symbol = m.group(2);
             String right = m.group(3);
             String label = m.group(4);
-            // entity-definition lines also start with a table name but their "symbol" is "{"
-            if (symbol.startsWith("{") || !isRelationshipSymbol(symbol)) {
-                continue;
+            Kind kind = classify(symbol);
+            if (kind == null) {
+                continue;   // entity-definition line or unsupported marker
             }
-            String cardinality = cardinalityOf(symbol);
+            String cardinality = cardinalityOf(kind);
             String evidence = evidenceOf(label);
-            double confidence = confidenceOf(evidence);
-            ParsedErRelation r = new ParsedErRelation(left, right, cardinality, evidence, confidence, label);
+            ParsedErRelation r = new ParsedErRelation(left, right, kind, cardinality, evidence,
+                    confidenceOf(evidence), label);
             r.setCrossDomain(crossDomainOf(label));
             fillColumns(r, label);
             out.add(r);
@@ -73,13 +77,45 @@ public final class ErDiagramRelationParser {
         return out;
     }
 
-    private static boolean isRelationshipSymbol(String s) {
-        return s.contains("--") || s.contains("..");
+    /**
+     * Splits the symbol into left/right markers on the {@code --}/{@code ..} connector and maps the
+     * crow-foot presence ({@code }} on left, {@code &#123;} on right) to a {@link Kind}. Returns null
+     * when the token is not a recognised relationship symbol.
+     */
+    private static Kind classify(String symbol) {
+        int sep = symbol.indexOf("--");
+        if (sep < 0) {
+            sep = symbol.indexOf("..");
+        }
+        if (sep < 0) {
+            return null;
+        }
+        String leftMarker = symbol.substring(0, sep);
+        String rightMarker = symbol.substring(sep + 2);
+        if (leftMarker.isEmpty() || rightMarker.isEmpty()
+                || !leftMarker.matches("[|o}]+") || !rightMarker.matches("[|o{]+")) {
+            return null;
+        }
+        boolean leftMany = leftMarker.contains("}");
+        boolean rightMany = rightMarker.contains("{");
+        if (leftMany && rightMany) {
+            return Kind.MANY_TO_MANY;
+        }
+        if (rightMany) {
+            return Kind.ONE_TO_MANY;
+        }
+        if (leftMany) {
+            return Kind.MANY_TO_ONE;
+        }
+        return Kind.ONE_TO_ONE;
     }
 
-    /** only three symbols actually occur: {@code ||--o{} }, {@code ||--o|}, {@code |o--o{}} (child = right). */
-    private static String cardinalityOf(String symbol) {
-        return symbol.equals("||--o|") ? "1:1" : "1:N";
+    private static String cardinalityOf(Kind kind) {
+        return switch (kind) {
+            case ONE_TO_MANY, MANY_TO_ONE -> "1:N";
+            case ONE_TO_ONE -> "1:1";
+            case MANY_TO_MANY -> "N:M";
+        };
     }
 
     /** strongest five-level evidence keyword present in any non-跨域 bracket wins (er-model §六). */
@@ -93,7 +129,7 @@ public final class ErDiagramRelationParser {
                 continue;
             }
             for (String cand : new String[]{"注释明示", "索引佐证", "字段命名", "业务语义推断"}) {
-                if (tok.contains(keywordFor(cand)) && rank(cand) < bestRank) {
+                if (hasKeyword(tok, cand) && rank(cand) < bestRank) {
                     best = cand;
                     bestRank = rank(best);
                 }
@@ -102,13 +138,13 @@ public final class ErDiagramRelationParser {
         return best;
     }
 
-    private static String keywordFor(String level) {
+    private static boolean hasKeyword(String token, String level) {
         return switch (level) {
-            case "注释明示" -> "注释明示";
-            case "索引佐证" -> "索引";
-            case "字段命名" -> "命名推断";
-            case "业务语义推断" -> "语义";
-            default -> "待确认";
+            case "注释明示" -> token.contains("注释明示");
+            case "索引佐证" -> token.contains("索引");
+            case "字段命名" -> token.contains("命名推断") || token.contains("字段命名") || token.contains("自关联");
+            case "业务语义推断" -> token.contains("语义");
+            default -> token.contains("待确认");
         };
     }
 
@@ -123,14 +159,25 @@ public final class ErDiagramRelationParser {
         return null;
     }
 
-    /** split label on the first {@code ->}: alias.col before it are FK candidates, after is the target col. */
+    /**
+     * Splits the label on the first target separator ({@code ->}/{@code ↔}/{@code =}); {@code alias.col}
+     * tokens before it are FK-column candidates, the first one after becomes the target column.
+     */
     private static void fillColumns(ParsedErRelation r, String label) {
-        int arrow = label.indexOf("->");
-        String before = arrow >= 0 ? label.substring(0, arrow) : label;
+        int idx = -1;
+        int sepLen = 0;
+        for (String sep : TARGET_SEPARATORS) {
+            int i = label.indexOf(sep);
+            if (i >= 0 && (idx < 0 || i < idx)) {
+                idx = i;
+                sepLen = sep.length();
+            }
+        }
+        String before = idx >= 0 ? label.substring(0, idx) : label;
         collectCols(r.getFromColumnCandidates(), before);
-        if (arrow >= 0) {
+        if (idx >= 0) {
             List<String> toCols = new ArrayList<>();
-            collectCols(toCols, label.substring(arrow + 2));
+            collectCols(toCols, label.substring(idx + sepLen));
             if (!toCols.isEmpty()) {
                 r.setToColumnCandidate(toCols.get(0));
             }

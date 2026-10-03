@@ -12,4 +12,6 @@ public interface MetaRelationRepository extends JpaRepository<MetaRelation, Long
     List<MetaRelation> findByToAssetId(Long toAssetId);
 
     List<MetaRelation> findByOrigin(String origin);
+
+    boolean existsByOrigin(String origin);
 }
