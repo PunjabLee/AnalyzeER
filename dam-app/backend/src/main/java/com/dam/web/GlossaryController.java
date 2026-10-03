@@ -182,10 +182,14 @@ public class GlossaryController {
     /** reverse lookup: which terms reference a given asset (used by the asset detail page) */
     @GetMapping("/by-asset/{assetId}")
     public List<TermSummary> termsForAsset(@PathVariable Long assetId) {
+        // dedup by term id first: a term may reference the same asset via multiple refs
+        // (e.g. table-level + a column of that table); GlossaryTerm has no equals/hashCode,
+        // so .distinct() on freshly-loaded instances would not collapse them (S3-3).
         return refRepo.findByAssetId(assetId).stream()
-                .map(r -> termRepo.findById(r.getTermId()).orElse(null))
-                .filter(java.util.Objects::nonNull)
+                .map(GlossaryTermRef::getTermId)
                 .distinct()
+                .map(tid -> termRepo.findById(tid).orElse(null))
+                .filter(java.util.Objects::nonNull)
                 .map(t -> new TermSummary(t.getId(), t.getName(), t.getDomainCode(), t.getStatus(),
                         refRepo.findByTermId(t.getId()).size()))
                 .toList();

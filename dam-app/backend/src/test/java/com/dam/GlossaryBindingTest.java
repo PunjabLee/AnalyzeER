@@ -3,6 +3,7 @@ package com.dam;
 import com.dam.domain.MetaAsset;
 import com.dam.repository.MetaAssetRepository;
 import com.dam.repository.MetaColumnRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -146,5 +148,37 @@ class GlossaryBindingTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * S3-3: when one term references the same asset both at table level and via a column of that
+     * asset, the asset reverse-lookup must list the term exactly once (dedup by term id).
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void reverseLookupDedupsTermBoundAtTableAndColumn() throws Exception {
+        Long traderId = asset("jf_trader").getId();
+        Long termId = newTermId("反查去重-测试-" + System.nanoTime());
+        Long colId = columnRepo.findByAssetIdOrderByOrdinalAsc(traderId).get(0).getId();
+
+        mvc.perform(post("/api/glossary/terms/" + termId + "/refs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"assetId\":" + traderId + "}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/glossary/terms/" + termId + "/refs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"columnId\":" + colId + "}"))
+                .andExpect(status().isOk());
+
+        String body = mvc.perform(get("/api/glossary/by-asset/" + traderId))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        long occurrences = 0;
+        for (JsonNode n : MAPPER.readTree(body)) {
+            if (n.get("id").asLong() == termId) {
+                occurrences++;
+            }
+        }
+        assertThat(occurrences).isEqualTo(1);
     }
 }

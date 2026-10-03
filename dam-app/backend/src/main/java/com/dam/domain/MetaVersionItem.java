@@ -14,8 +14,8 @@ import jakarta.persistence.Table;
  * versus the immediately previous snapshot: ADDED / DROPPED / RETAINED / CHANGED
  * (compare_ddl_sources.ps1 semantics, not row-order dependent — 评审#3).
  *
- * <p>{@code signature} is the canonical column-set fingerprint ("name:TYPE:nullable" per
- * column, ordinal-ordered); {@code schemaHash} is its SHA-256 for O(1) change detection.
+ * <p>{@code signature} is the canonical column-set fingerprint ("name|TYPE|NULLABLE" per
+ * column, sorted so it is independent of physical order); {@code schemaHash} is its SHA-256 for O(1) change detection.
  * Column-level deltas (added/dropped/type-changed) are derived on read by comparing the
  * signatures of adjacent snapshots, so no redundant delta table is needed.
  */

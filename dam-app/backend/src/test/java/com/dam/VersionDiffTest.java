@@ -93,6 +93,37 @@ class VersionDiffTest {
         return saved;
     }
 
+    /** a probe with two columns whose physical order differs from their lexical order */
+    private MetaAsset createTwoColumnProbe() {
+        MetaAsset a = new MetaAsset();
+        a.setAssetUrn(PROBE_URN);
+        a.setName("zz_version_probe");
+        a.setGrading("C");
+        a.setDomainCode("OT");
+        a.setColumnCount(2);
+        MetaAsset saved = assetRepo.save(a);
+        MetaColumn colA = new MetaColumn();
+        colA.setAssetId(saved.getId());
+        colA.setOrdinal(0);
+        colA.setName("probe_col_a");
+        colA.setType("int");
+        colA.setNullable("Y");
+        MetaColumn colB = new MetaColumn();
+        colB.setAssetId(saved.getId());
+        colB.setOrdinal(1);
+        colB.setName("probe_col_b");
+        colB.setType("varchar(64)");
+        colB.setNullable("N");
+        columnRepo.save(colA);
+        columnRepo.save(colB);
+        return saved;
+    }
+
+    private void deleteProbe(MetaAsset probe) {
+        columnRepo.deleteAll(columnRepo.findByAssetIdOrderByOrdinalAsc(probe.getId()));
+        assetRepo.delete(probe);
+    }
+
     @Test
     @WithMockUser(roles = "STEWARD")
     void snapshotsDiffByUrnAcrossFullLifecycle() throws Exception {
@@ -146,6 +177,78 @@ class VersionDiffTest {
 
         // clean up the extra snapshots (idempotent seed-free store)
         // (leaves version rows; harmless to other tests since none assert on meta_version)
+    }
+
+    /**
+     * S2-1: once an asset is DROPPED, later snapshots must not keep re-counting it (no "phantom
+     * DROPPED"), because DROPPED tombstones are excluded from the next snapshot's baseline.
+     */
+    @Test
+    @WithMockUser(roles = "STEWARD")
+    void droppedAssetDoesNotPhantomRepeatAcrossLaterSnapshots() throws Exception {
+        long realCount = baselineCount();
+        MetaAsset probe = createProbe("int");
+        snapshot("add-probe");                 // probe present -> ADDED
+        deleteProbe(probe);
+        long dropped = snapshot("drop-probe"); // probe -> DROPPED (1)
+        mvc.perform(get("/api/versions/" + dropped))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeSummary.DROPPED").value(1));
+
+        // a further snapshot with no catalog change: the DROPPED tombstone must NOT resurface
+        long after = snapshot("no-change-after-drop");
+        mvc.perform(get("/api/versions/" + after))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeSummary.DROPPED").doesNotExist())
+                .andExpect(jsonPath("$.changeSummary.RETAINED").value((int) realCount));
+    }
+
+    /**
+     * S2-1: an asset dropped and then recreated with the same structure must classify as ADDED,
+     * not RETAINED/CHANGED against the stale tombstone signature.
+     */
+    @Test
+    @WithMockUser(roles = "STEWARD")
+    void droppedThenRebuiltAssetIsAddedNotRetained() throws Exception {
+        long realCount = baselineCount();
+        MetaAsset probe = createProbe("int");
+        snapshot("add-probe");
+        deleteProbe(probe);
+        snapshot("drop-probe");                // DROPPED
+
+        MetaAsset rebuilt = createProbe("int"); // identical urn/name/columns -> should be ADDED
+        long v = snapshot("rebuild-probe");
+        mvc.perform(get("/api/versions/" + v))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeSummary.ADDED").value(1))
+                .andExpect(jsonPath("$.changeSummary.DROPPED").doesNotExist())
+                .andExpect(jsonPath("$.changeSummary.CHANGED").doesNotExist())
+                .andExpect(jsonPath("$.changeSummary.RETAINED").value((int) realCount));
+        deleteProbe(rebuilt);
+    }
+
+    /**
+     * S3-2: a pure column drag-reorder changes physical ordinal order but not the column set,
+     * so the signature (sorted) is unchanged and the asset stays RETAINED (never CHANGED).
+     */
+    @Test
+    @WithMockUser(roles = "STEWARD")
+    void columnReorderAloneDoesNotMarkChanged() throws Exception {
+        long realCount = baselineCount();
+        MetaAsset probe = createTwoColumnProbe();
+        snapshot("add-probe");                  // baseline with (a=0,b=1)
+
+        List<MetaColumn> cols = columnRepo.findByAssetIdOrderByOrdinalAsc(probe.getId());
+        cols.get(0).setOrdinal(1);
+        cols.get(1).setOrdinal(0);
+        columnRepo.saveAll(cols);               // swap to (b=0,a=1) without touching the set
+
+        long v = snapshot("reorder");
+        mvc.perform(get("/api/versions/" + v))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.changeSummary.CHANGED").doesNotExist())
+                .andExpect(jsonPath("$.changeSummary.RETAINED").value((int) realCount + 1));
+        deleteProbe(probe);
     }
 
     @Test

@@ -8,6 +8,9 @@ import com.dam.repository.MetaAssetRepository;
 import com.dam.repository.MetaColumnRepository;
 import com.dam.repository.MetaVersionItemRepository;
 import com.dam.repository.MetaVersionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +43,14 @@ public class VersionService {
     private final MetaVersionRepository versionRepo;
     private final MetaVersionItemRepository itemRepo;
 
+    /**
+     * Self reference so {@link #createSnapshot} can drive the transactional worker through the
+     * proxy and retry on a {@code version_no} collision (S3-1); {@code @Lazy} breaks the cycle.
+     */
+    @Lazy
+    @Autowired
+    private VersionService self;
+
     public VersionService(MetaAssetRepository assetRepo,
                           MetaColumnRepository columnRepo,
                           MetaVersionRepository versionRepo,
@@ -49,12 +61,37 @@ public class VersionService {
         this.itemRepo = itemRepo;
     }
 
-    /** Capture a snapshot of the current catalog and diff it against the previous snapshot. */
-    @Transactional
+    /**
+     * Capture a snapshot of the current catalog and diff it against the previous snapshot.
+     * The version number is assigned from the current maximum; concurrent callers can momentarily
+     * compute the same value, which the {@code version_no} unique constraint then rejects — so we
+     * retry (each attempt is its own transaction via the {@code self} proxy).
+     */
     public MetaVersion createSnapshot(String note) {
+        int maxAttempts = 5;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return self.doSnapshot(note);
+            } catch (DataIntegrityViolationException collision) {
+                if (attempt >= maxAttempts) {
+                    throw collision;
+                }
+            }
+        }
+    }
+
+    /** The atomic snapshot + diff, run in its own transaction so a collision fully rolls back. */
+    @Transactional
+    public MetaVersion doSnapshot(String note) {
         Optional<MetaVersion> prev = versionRepo.findTopByOrderByVersionNoDesc();
+        // Exclude the previous snapshot's DROPPED tombstones from the comparison baseline: they
+        // are history-only markers, not "still present" entries. Keeping them would (a) re-count a
+        // long-deleted asset as DROPPED on every later snapshot and (b) mis-classify a dropped-and-
+        // rebuilt asset as RETAINED/CHANGED against the stale signature (S2-1).
         Map<String, MetaVersionItem> prevItems = prev
-                .map(v -> indexByUrn(itemRepo.findByVersionId(v.getId())))
+                .map(v -> indexByUrn(itemRepo.findByVersionId(v.getId()).stream()
+                        .filter(it -> !"DROPPED".equals(it.getChangeType()))
+                        .toList()))
                 .orElseGet(Map::of);
 
         MetaVersion version = new MetaVersion();
@@ -133,20 +170,23 @@ public class VersionService {
         return it;
     }
 
-    /** canonical per-column fingerprint: "name|TYPE|NULLABLE" joined, ordinal-ordered */
+    /**
+     * canonical column-set fingerprint: each column as "name|TYPE|NULLABLE", sorted by that string
+     * and joined. Sorting (set semantics) rather than physical ordinal order means a pure drag
+     * reorder does not change the signature, so it is not mis-reported as CHANGED (S3-2);
+     * consistent with the class/README "independent of row order" contract.
+     */
     private String signatureOf(Long assetId) {
-        StringBuilder sb = new StringBuilder();
+        List<String> parts = new ArrayList<>();
         for (MetaColumn c : columnRepo.findByAssetIdOrderByOrdinalAsc(assetId)) {
-            if (sb.length() > 0) {
-                sb.append('\u0001');
-            }
-            sb.append(c.getName() == null ? "" : c.getName().trim())
-                    .append('|')
-                    .append(c.getType() == null ? "" : c.getType().trim().toUpperCase())
-                    .append('|')
-                    .append(c.getNullable() == null ? "" : c.getNullable().trim().toUpperCase());
+            parts.add((c.getName() == null ? "" : c.getName().trim())
+                    + '|'
+                    + (c.getType() == null ? "" : c.getType().trim().toUpperCase())
+                    + '|'
+                    + (c.getNullable() == null ? "" : c.getNullable().trim().toUpperCase()));
         }
-        return sb.toString();
+        Collections.sort(parts);
+        return String.join("\u0001", parts);
     }
 
     private static Map<String, MetaVersionItem> indexByUrn(List<MetaVersionItem> items) {

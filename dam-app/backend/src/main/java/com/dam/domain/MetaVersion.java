@@ -24,8 +24,9 @@ public class MetaVersion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** monotonic 1-based version number */
-    @Column(name = "version_no", nullable = false)
+    /** monotonic 1-based version number; unique so concurrent snapshots collide on insert
+     *  and {@link com.dam.version.VersionService} retries rather than producing duplicate numbers */
+    @Column(name = "version_no", nullable = false, unique = true)
     private Integer versionNo;
 
     /** FULL (first baseline) / INCREMENT */
