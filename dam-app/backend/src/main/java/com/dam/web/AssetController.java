@@ -215,7 +215,7 @@ public class AssetController {
         return new RelationView(r.getId(), direction,
                 nameOf.apply(r.getFromAssetId()), r.getFromColumn(),
                 nameOf.apply(r.getToAssetId()), r.getToColumn(),
-                r.getTargetRaw(), r.getEvidenceLevel(), r.getCardinality(), r.getOrigin(),
+                r.getTargetRaw(), r.getEvidenceLevel(), r.getCardinality(), r.isConflictFlag(), r.getOrigin(),
                 r.getConfidence(), r.getConfirmStatus(), r.getCrossDomain(), r.getSourceDoc());
     }
 

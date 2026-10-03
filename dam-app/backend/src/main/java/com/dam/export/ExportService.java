@@ -122,6 +122,7 @@ public class ExportService {
             n.put("targetRaw", r.getTargetRaw());
             n.put("evidenceLevel", r.getEvidenceLevel());
             n.put("cardinality", r.getCardinality());
+            n.put("conflictFlag", r.isConflictFlag());
             n.put("origin", r.getOrigin());
             n.put("confidence", r.getConfidence());
             n.put("confirmStatus", r.getConfirmStatus());

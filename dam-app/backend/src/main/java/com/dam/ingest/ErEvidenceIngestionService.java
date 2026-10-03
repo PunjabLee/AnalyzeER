@@ -76,6 +76,16 @@ public class ErEvidenceIngestionService {
         this.relRepo = relRepo;
     }
 
+    /**
+     * Tally of one channel-1 overlay pass. <b>口径说明 (S3-2)：</b>
+     * <ul>
+     *   <li>{@code matched} 是「命中已有边位置」的 ER 行总数，<b>包含</b> {@code resolvedProse}
+     *       （消解散文边同时也 matched++）；故 {@code resolvedProse ⊆ matched}，非并列；</li>
+     *   <li>{@code conflicts}/{@code deferredDenial}/{@code deferredMulti} 均<b>按 ER 行计</b>（非按去重后的边），
+     *       同一位置多行可各自计数；</li>
+     *   <li>{@code newEdges} 是本次真正新建的边数（= 落库 origin=ER证据摘录 增量），与 {@code matched} 不相交。</li>
+     * </ul>
+     */
     public record ErReport(int matched, int cardinalityFilled, int evidenceUpgraded, int newEdges,
                            int resolvedProse, int deferredDenial, int deferredMulti, int conflicts,
                            int skippedEndpoint, int skippedNoColumn, int skippedNotOwned,
@@ -278,6 +288,7 @@ public class ErEvidenceIngestionService {
         Set<Long> candParents = parentsAt.getOrDefault(posKey(child.getId(), prose.getFromColumn()), Set.of());
         if (candParents.size() > 1) {
             appendCandidate(prose, parent, doc, "多父候选");
+            prose.setConflictFlag(true);   // R3 多候选目标：交确认台消歧（S3-1 可过滤）
             c.deferredMulti++;
             return;
         }
@@ -321,6 +332,7 @@ public class ErEvidenceIngestionService {
     }
 
     private void markConflict(MetaRelation e, MetaAsset erParent) {
+        e.setConflictFlag(true);   // ②与 ER 指向不同具体目标：可过滤冲突位（S3-1）
         appendNote(e, "｜ER冲突目标:" + erParent.getName());
     }
 

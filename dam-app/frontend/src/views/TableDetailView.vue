@@ -134,10 +134,10 @@ watch(() => route.params.name, n => { if (n) load(String(n)) })
         </div>
       </section>
 
-      <h3>推断关系（{{ detail.relations.length }} 条，全部来自逻辑模型 FK 列，待确认）</h3>
+      <h3>推断关系（{{ detail.relations.length }} 条，来自逻辑模型 FK 列②、经 ER 证据叠加①，待确认）</h3>
       <div class="rels">
         <table class="grid">
-          <thead><tr><th>方向</th><th>列</th><th>目标表</th><th>依据</th><th>置信度</th><th>跨域</th><th>来源文档</th></tr></thead>
+          <thead><tr><th>方向</th><th>列</th><th>目标表</th><th>依据｜来源</th><th>基数</th><th>置信度</th><th>跨域</th><th>来源文档</th></tr></thead>
           <tbody>
             <tr v-for="r in [...outRels, ...inRels]" :key="r.id">
               <td>{{ r.direction === 'out' ? '出 →' : '← 入' }}</td>
@@ -147,12 +147,16 @@ watch(() => route.params.name, n => { if (n) load(String(n)) })
                 <a v-else-if="r.toName" @click="goto(r.toName)">{{ r.toName }}</a>
                 <span v-else class="muted">未解析：{{ r.targetRaw }}</span>
               </td>
-              <td>{{ r.evidenceLevel }}｜{{ r.origin }}</td>
+              <td>
+                {{ r.evidenceLevel }}｜{{ r.origin }}
+                <span v-if="r.conflictFlag" class="warn">｜⚠ 目标冲突待消歧</span>
+              </td>
+              <td>{{ r.cardinality || '' }}</td>
               <td>{{ r.confidence }}</td>
               <td>{{ r.crossDomain || '' }}</td>
               <td class="muted">{{ r.sourceDoc }}</td>
             </tr>
-            <tr v-if="!detail.relations.length"><td colspan="7" class="muted">该表在逻辑模型中无 FK 标记</td></tr>
+            <tr v-if="!detail.relations.length"><td colspan="8" class="muted">该表在逻辑模型中无 FK 标记</td></tr>
           </tbody>
         </table>
       </div>
@@ -214,4 +218,5 @@ table.grid thead th { background: #f7f7f7; position: sticky; top: 0; }
 button.mini { font-size: 12px; padding: 3px 8px; margin-left: 10px; background: #2f855a; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .meaning { max-width: 480px; }
 .rels a { color: #2b6cb0; cursor: pointer; text-decoration: underline; }
+.warn { color: #c53030; font-weight: 600; }
 </style>

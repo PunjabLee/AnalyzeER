@@ -41,7 +41,9 @@ export interface RelationView {
   toColumn: string | null
   targetRaw: string | null
   evidenceLevel: string | null
+  cardinality: string | null // 1:1 / 1:N (channel-1 ER overlay; null until overlaid)
   origin: string | null
+  conflictFlag: boolean // channel-2 vs ER target conflict / multi-parent (待人工消歧)
   confidence: number | null
   confirmStatus: string | null
   crossDomain: string | null

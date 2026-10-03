@@ -66,6 +66,15 @@ public class MetaRelation {
     @Column(name = "cardinality", length = 16)
     private String cardinality;
 
+    /**
+     * Set when channel-1 ER evidence points this (from,col) edge at a DIFFERENT concrete target than
+     * channel-2 already did (S3-1). A filterable flag for the confirmation workbench — kept separate
+     * from confirm_status so the 待确认/已确认/驳回 loop stays untouched. The human-readable detail
+     * (the conflicting ER target) is still appended to basis_raw.
+     */
+    @Column(name = "conflict_flag", nullable = false)
+    private boolean conflictFlag = false;
+
     /** 依据原文 as written after the target inside FK[...] (minus the · separators) */
     @Column(name = "basis_raw", length = 300)
     private String basisRaw;
@@ -100,6 +109,8 @@ public class MetaRelation {
     public void setCrossDomain(String crossDomain) { this.crossDomain = crossDomain; }
     public String getCardinality() { return cardinality; }
     public void setCardinality(String cardinality) { this.cardinality = cardinality; }
+    public boolean isConflictFlag() { return conflictFlag; }
+    public void setConflictFlag(boolean conflictFlag) { this.conflictFlag = conflictFlag; }
     public String getBasisRaw() { return basisRaw; }
     public void setBasisRaw(String basisRaw) { this.basisRaw = basisRaw; }
     public String getSourceDoc() { return sourceDoc; }

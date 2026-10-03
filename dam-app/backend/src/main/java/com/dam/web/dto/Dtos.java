@@ -47,6 +47,7 @@ public final class Dtos {
             String targetRaw,
             String evidenceLevel,
             String cardinality,     // 1:1 / 1:N / N:M (channel-1 ER overlay; null if not overlaid)
+            boolean conflictFlag,   // channel-2 vs ER target conflict / multi-parent (S3-1, filterable)
             String origin,
             Double confidence,
             String confirmStatus,
