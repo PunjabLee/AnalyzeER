@@ -1,6 +1,6 @@
-# dam-app · 数据资产管理应用（M0+M1 批次）
+# dam-app · 数据资产管理应用（M0+M1+M2 批次）
 
-按 [PLAN.md](../PLAN.md) §6 分期路线图实施，本目录为 **M0（POC 奠基）+ M1（资产目录 MVP）** 批次的可运行代码。
+按 [PLAN.md](../PLAN.md) §6 分期路线图实施，本目录为 **M0（POC 奠基）+ M1（资产目录 MVP）+ M2（术语·三级模型·版本·轻量拖拽）** 批次的可运行代码。
 
 ## M0 交付内容
 
@@ -62,6 +62,24 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 可按域钻取检索：facets + `/api/assets?domain=&grading=`；
 - POC 账号口令：`dam.security.poc-password`（默认 change-me-POC，身份源接法 [待确认]）。
 
+## M2 交付内容（术语 + 三级模型 + 版本 + 轻量拖拽）
+
+| 模块 | 内容 | 状态 |
+|---|---|---|
+| 业务术语（M3） | `glossary_term/glossary_term_ref` CRUD + M:N 引用（表/列级），`/api/glossary`；示例术语 DRAFT 种子不臆造口径（R4） | ✅ |
+| 三级模型（M4） | `model_bom/model_ldm/model_pdm/model_mapping`；`CoreEntityCatalogParser` 解析 `05` §二 三分类，`ModelService` 按**真实目录名精确校验**构建 BOM↔LDM↔PDM（仅存在表成节点，未解析按原文保留·零臆造），`/api/model` | ✅ |
+| 版本快照与 diff（M4/R7·D3） | `meta_version/meta_version_item`；`VersionService` 按稳定 `asset_urn` 冻结列签名，diff 产 ADDED/DROPPED/RETAINED/CHANGED + 列级增删改，`/api/versions` | ✅ |
+| 轻量拖拽（M9.1/9.2） | 表详情列拖拽排序（`PATCH /api/assets/{id}/columns/order`）；业务术语页资产拖拽绑定（原生 HTML5 DnD） | ✅ |
+| 身份源收敛（D5） | `sys_user` 取代内存用户为权威身份源，BCrypt；`UserDetailsService` 为生产 IAM 适配器位；owner/steward 存在性校验→400 | ✅ |
+| 前端 | 新增 业务术语/三级模型 两页与导航（vue-router 共 8 页） | ✅ |
+
+## M2 退出标准（已验证，`mvn test` 43/43 + 真实 MySQL 8 冒烟）
+
+- **术语↔`jf_trader` 可绑定（含拖拽）**：绑定 + `by-asset` 反查在 MySQL 实测通过；
+- **三级映射可视化**：`jf_trader`（MASTER·贸易商）→ LDM → PDM `mysql:test_erp:jf_trader`（24 列）`resolved=true`，映射依据留痕；实测 BOM=36 / LDM=PDM=映射=66 / 未解析=3；
+- **版本快照可比对**：v1 FULL（ADDED 1322）、v2 INCREMENT（RETAINED 1322）+ 列级 delta，MySQL 全链路复验；
+- 冒烟修复：`meta_version_item.signature` 由裸 `@Lob`（MySQL 建 TINYTEXT 截断宽表签名）改为显式 `longtext`。
+
 ## 关键设计口径（对齐评审结论）
 
 - **结构 ← DDL，关系 ← ER 证据**：本库 0 外键，`DdlParser` 只摄取表/列结构；
@@ -74,8 +92,8 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 
 ```
 dam-app/
-├── backend/                # SpringBoot（com.dam: M0 范围）
-│   └── src/main/java/com/dam/{parser,ingest,domain,repository,web,config}
+├── backend/                # SpringBoot（com.dam）
+│   └── src/main/java/com/dam/{parser,ingest,domain,repository,web,config,security,dict,dq,export,version,model,audit}
 ├── frontend/               # Vue3 + Vite + TS
 └── docker-compose.yml      # MySQL 8（可选 profile）
 ```
