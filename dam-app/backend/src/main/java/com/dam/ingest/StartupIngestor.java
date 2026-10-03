@@ -27,7 +27,9 @@ public class StartupIngestor {
                                  ErModelLabelsIngestionService labelsService,
                                  RelationIngestionService relationService,
                                  MetaAssetRepository assetRepo,
-                                 com.dam.repository.MetaRelationRepository relRepo) {
+                                 com.dam.repository.MetaRelationRepository relRepo,
+                                 com.dam.model.ModelService modelService,
+                                 com.dam.repository.ModelBomRepository bomRepo) {
         return args -> {
             if (assetRepo.count() == 0) {
                 log.info("auto-on-startup ingest enabled and catalog empty -> ingesting default DDL");
@@ -57,6 +59,15 @@ public class StartupIngestor {
                 }
             } catch (RuntimeException e) {
                 log.warn("Relation ingest skipped: {}", e.getMessage());
+            }
+            // M2: three-level model (BOM/LDM/PDM) from 05 §二 once the catalog is present
+            try {
+                if (assetRepo.count() > 0 && bomRepo.count() == 0) {
+                    log.info("Building three-level model from 05 §二...");
+                    log.info("Model build done: {}", modelService.build(null));
+                }
+            } catch (RuntimeException e) {
+                log.warn("Model build skipped: {}", e.getMessage());
             }
         };
     }

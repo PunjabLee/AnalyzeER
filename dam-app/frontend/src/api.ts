@@ -224,6 +224,56 @@ export interface TermBinding {
   refType?: string
 }
 
+// three-level model (capability M4)
+export interface BomSummary {
+  id: number
+  name: string
+  label: string | null
+  category: string
+  domainCode: string | null
+  childCount: number
+}
+
+export interface TraceNode {
+  ldmId: number | null
+  ldmName: string | null
+  domainCode: string | null
+  pdmId: number | null
+  assetId: number | null
+  assetUrn: string | null
+  columnCount: number | null
+  basis: string | null
+  resolved: boolean
+}
+
+export interface BomTrace {
+  id: number
+  name: string
+  label: string | null
+  category: string
+  domainCode: string | null
+  description: string | null
+  sourceExpr: string | null
+  nodes: TraceNode[]
+}
+
+export interface ModelOverview {
+  bomTotal: number
+  ldmTotal: number
+  pdmTotal: number
+  mappingTotal: number
+  bomWithoutResolution: number
+  bomByCategory: Record<string, number>
+}
+
+export interface ModelBuildReport {
+  bom: number
+  ldm: number
+  pdm: number
+  mappings: number
+  bomWithoutResolution: number
+}
+
 export const api = {
   // catalog
   count: () => request<number>('/api/assets/count'),
@@ -257,6 +307,12 @@ export const api = {
   glossaryBind: (id: number, b: TermBinding) => post<RefView>('/api/glossary/terms/' + id + '/refs', b),
   glossaryUnbind: (refId: number) => del('/api/glossary/refs/' + refId),
   glossaryByAsset: (assetId: number) => request<TermSummary[]>('/api/glossary/by-asset/' + assetId),
+
+  // three-level model (M4)
+  modelBom: () => request<BomSummary[]>('/api/model/bom'),
+  modelTrace: (id: number) => request<BomTrace>('/api/model/bom/' + id + '/trace'),
+  modelOverview: () => request<ModelOverview>('/api/model/overview'),
+  modelRebuild: () => post<ModelBuildReport>('/api/model/rebuild'),
 
   // dictionary (M2)
   listFields: () => request<StandardField[]>('/api/dict/standard-fields'),
