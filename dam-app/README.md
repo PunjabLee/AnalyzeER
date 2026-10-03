@@ -68,17 +68,29 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 |---|---|---|
 | 业务术语（M3） | `glossary_term/glossary_term_ref` CRUD + M:N 引用（表/列级），`/api/glossary`；示例术语 DRAFT 种子不臆造口径（R4） | ✅ |
 | 三级模型（M4） | `model_bom/model_ldm/model_pdm/model_mapping`；`CoreEntityCatalogParser` 解析 `05` §二 三分类，`ModelService` 按**真实目录名精确校验**构建 BOM↔LDM↔PDM（仅存在表成节点，未解析按原文保留·零臆造），`/api/model` | ✅ |
-| 版本快照与 diff（M4/R7·D3） | `meta_version/meta_version_item`；`VersionService` 按稳定 `asset_urn` 冻结列签名，diff 产 ADDED/DROPPED/RETAINED/CHANGED + 列级增删改，`/api/versions` | ✅ |
+| 版本快照与 diff（M4/R7·D3） | `meta_version/meta_version_item`；`VersionService` 按稳定 `asset_urn` 冻结**集合签名**（逐列 `name\|TYPE\|NULLABLE` 排序后拼接，与列序无关），diff 产 ADDED/DROPPED/RETAINED/CHANGED + 列级增删改；快照基线剔除 DROPPED 墓碑、`version_no` 命名唯一约束+冲突重试、`signature_algo` 迁移标签，`/api/versions` | ✅ |
 | 轻量拖拽（M9.1/9.2） | 表详情列拖拽排序（`PATCH /api/assets/{id}/columns/order`）；业务术语页资产拖拽绑定（原生 HTML5 DnD） | ✅ |
 | 身份源收敛（D5） | `sys_user` 取代内存用户为权威身份源，BCrypt；`UserDetailsService` 为生产 IAM 适配器位；owner/steward 存在性校验→400 | ✅ |
 | 前端 | 新增 业务术语/三级模型 两页与导航（vue-router 共 8 页） | ✅ |
 
-## M2 退出标准（已验证，`mvn test` 43/43 + 真实 MySQL 8 冒烟）
+## M2 退出标准（已验证，`mvn test` 49/49 + 真实 MySQL 8 冒烟）
 
-- **术语↔`jf_trader` 可绑定（含拖拽）**：绑定 + `by-asset` 反查在 MySQL 实测通过；
+- **术语↔`jf_trader` 可绑定（含拖拽）**：绑定 + `by-asset` 反查在 MySQL 实测通过；反查按 `termId` 去重（表级+列级双绑定不重复）；
 - **三级映射可视化**：`jf_trader`（MASTER·贸易商）→ LDM → PDM `mysql:test_erp:jf_trader`（24 列）`resolved=true`，映射依据留痕；实测 BOM=36 / LDM=PDM=映射=66 / 未解析=3；
 - **版本快照可比对**：v1 FULL（ADDED 1322）、v2 INCREMENT（RETAINED 1322）+ 列级 delta，MySQL 全链路复验；
 - 冒烟修复：`meta_version_item.signature` 由裸 `@Lob`（MySQL 建 TINYTEXT 截断宽表签名）改为显式 `longtext`。
+
+## M2 专家评审整改（提交 `fb6bd0d` + 本批次，`mvn test` 49/49）
+
+对 M2 版本 diff / 术语反查的 7 项评审发现（S2×2、S3×5）全部落地：
+- **幻影 DROPPED**：diff 基线剔除上一版 `DROPPED` 墓碑 → 已删表不再逐版重复计入，删除后同结构重建正确归为 ADDED；
+- **集合签名**：`signatureOf` 由按 ordinal 拼接改为按列名排序拼接 → 纯列拖拽重排不再误判 CHANGED（兑现"独立于行序"契约）；
+- **迁移哨兵**：新增 `meta_version.signature_algo` 标签，就地升级后首个快照检测到旧基线口径不可比 → 自动重打 FULL（实测 v3 FULL/ADDED 1322、无 1295 幻影 CHANGED），不再跨算法比对；
+- **并发重号**：`version_no` 由无名 `@Column(unique=true)` 改为**命名唯一约束** `uk_meta_version_no`（令 `ddl-auto=update` 可判存在、避免静默 drop/recreate），`createSnapshot` 仅对 version_no 冲突重试（判因+日志+退避），`doSnapshot` 用 `REQUIRES_NEW` 保证每次尝试独立事务；
+- **术语反查去重**：`by-asset` 先按 `termId` 去重再装载，消除 `distinct()` 在缺 `equals/hashCode` 时失效导致的重复项。
+- ⚠️ 运维注记：既有 MySQL 库若历史遗留无名唯一索引，命名约束会并存（均生效、无害）；如需彻底清理可 `DROP TABLE meta_version, meta_version_item;` 由应用重建。集合签名口径变更对**未重打基线**的旧快照会触发一次 FULL 重钉（哨兵自动处理）。
+
+> 手工兜底 DDL（`ddl-auto=update` 未补建命名约束时）：`ALTER TABLE meta_version ADD CONSTRAINT uk_meta_version_no UNIQUE (version_no);`
 
 ## 关键设计口径（对齐评审结论）
 

@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.Instant;
 
@@ -17,16 +18,19 @@ import java.time.Instant;
  * FULL baseline; later ones are INCREMENT.
  */
 @Entity
-@Table(name = "meta_version")
+@Table(name = "meta_version",
+        uniqueConstraints = @UniqueConstraint(name = "uk_meta_version_no", columnNames = "version_no"))
 public class MetaVersion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** monotonic 1-based version number; unique so concurrent snapshots collide on insert
-     *  and {@link com.dam.version.VersionService} retries rather than producing duplicate numbers */
-    @Column(name = "version_no", nullable = false, unique = true)
+    /** monotonic 1-based version number; a *named* unique key so concurrent snapshots collide on
+     *  insert and {@link com.dam.version.VersionService} retries instead of duplicating numbers.
+     *  Named (not {@code @Column(unique=true)}) so Hibernate's schema migrator can detect its
+     *  existence on {@code ddl-auto=update} rather than silently drop/recreate an unnamed key (评审S2-2). */
+    @Column(name = "version_no", nullable = false)
     private Integer versionNo;
 
     /** FULL (first baseline) / INCREMENT */
@@ -46,6 +50,14 @@ public class MetaVersion {
     @Column(length = 500)
     private String note;
 
+    /**
+     * canonical-signature algorithm tag of this snapshot (see
+     * {@code VersionService.CURRENT_SIG_ALGO}); {@code null} = pre-tag legacy snapshot whose
+     * ordinal-ordered hashes are not comparable with the current sorted-set definition.
+     */
+    @Column(name = "signature_algo")
+    private Integer signatureAlgo;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Integer getVersionNo() { return versionNo; }
@@ -60,4 +72,6 @@ public class MetaVersion {
     public void setSourceId(Long sourceId) { this.sourceId = sourceId; }
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+    public Integer getSignatureAlgo() { return signatureAlgo; }
+    public void setSignatureAlgo(Integer signatureAlgo) { this.signatureAlgo = signatureAlgo; }
 }

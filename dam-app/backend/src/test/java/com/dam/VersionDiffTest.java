@@ -2,6 +2,7 @@ package com.dam;
 
 import com.dam.domain.MetaAsset;
 import com.dam.domain.MetaColumn;
+import com.dam.domain.MetaVersion;
 import com.dam.repository.MetaAssetRepository;
 import com.dam.repository.MetaColumnRepository;
 import com.dam.repository.MetaVersionItemRepository;
@@ -12,12 +13,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -261,5 +265,54 @@ class VersionDiffTest {
         mvc.perform(get("/api/versions/" + vB))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.changeSummary.RETAINED").value((int) baselineCount()));
+    }
+
+    /**
+     * 评审 S2-1: an in-place upgrade must not diff the first post-change snapshot against a legacy
+     * baseline captured under a different signature algorithm (which would mass-report CHANGED with
+     * empty deltas). The stored algo tag forces a fresh FULL re-pin instead.
+     */
+    @Test
+    @WithMockUser(roles = "STEWARD")
+    void signatureAlgoChangeForcesFullRepinNotMassChanged() throws Exception {
+        long realCount = baselineCount();
+        // hand-craft a legacy predecessor with no algo tag (ordinal-era snapshot) at version_no=1
+        MetaVersion legacy = new MetaVersion();
+        legacy.setVersionNo(1);
+        legacy.setBaselineType("FULL");
+        legacy.setSnapshotAt(Instant.now());
+        legacy.setAssetCount((int) realCount);
+        legacy.setSignatureAlgo(null);
+        versionRepo.save(legacy);
+
+        long v = snapshot("after-algo-upgrade");
+        mvc.perform(get("/api/versions/" + v))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.baselineType").value("FULL"))       // re-pinned, not INCREMENT
+                .andExpect(jsonPath("$.changeSummary.CHANGED").doesNotExist())
+                .andExpect(jsonPath("$.changeSummary.ADDED").value((int) realCount));
+    }
+
+    /**
+     * 评审 S2-2: the *named* meta_version.version_no unique key must actually reject a duplicate,
+     * which is what makes createSnapshot's collision-retry meaningful (deterministic guard — the
+     * enforcement is the constraint, not the thread timing).
+     */
+    @Test
+    void versionNoUniqueKeyRejectsDuplicate() {
+        MetaVersion first = new MetaVersion();
+        first.setVersionNo(9001);
+        first.setBaselineType("FULL");
+        first.setSnapshotAt(Instant.now());
+        first.setAssetCount(0);
+        versionRepo.saveAndFlush(first);
+
+        MetaVersion duplicate = new MetaVersion();
+        duplicate.setVersionNo(9001);
+        duplicate.setBaselineType("INCREMENT");
+        duplicate.setSnapshotAt(Instant.now());
+        duplicate.setAssetCount(0);
+        assertThatThrownBy(() -> versionRepo.saveAndFlush(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

@@ -8,10 +8,13 @@ import com.dam.repository.MetaAssetRepository;
 import com.dam.repository.MetaColumnRepository;
 import com.dam.repository.MetaVersionItemRepository;
 import com.dam.repository.MetaVersionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -43,6 +46,19 @@ public class VersionService {
     private final MetaVersionRepository versionRepo;
     private final MetaVersionItemRepository itemRepo;
 
+    private static final Logger log = LoggerFactory.getLogger(VersionService.class);
+
+    /**
+     * Signature-algorithm tag frozen on every {@link MetaVersion}. Bumped whenever the canonical
+     * {@link #signatureOf} definition changes, so an in-place upgrade can detect a stale baseline
+     * whose stored hashes are not comparable and re-pin a FULL baseline instead of diffing against
+     * it and emitting mass phantom CHANGED (评审 S2-1). 1/null = legacy ordinal order, 2 = sorted set.
+     */
+    private static final Integer CURRENT_SIG_ALGO = 2;
+
+    /** the meta_version.version_no unique-key name; must match the entity's @UniqueConstraint. */
+    private static final String VERSION_NO_UK = "uk_meta_version_no";
+
     /**
      * Self reference so {@link #createSnapshot} can drive the transactional worker through the
      * proxy and retry on a {@code version_no} collision (S3-1); {@code @Lazy} breaks the cycle.
@@ -72,33 +88,63 @@ public class VersionService {
         for (int attempt = 1; ; attempt++) {
             try {
                 return self.doSnapshot(note);
-            } catch (DataIntegrityViolationException collision) {
-                if (attempt >= maxAttempts) {
-                    throw collision;
+            } catch (DataIntegrityViolationException dive) {
+                // Only a version_no collision is retryable; any other integrity problem (e.g. an
+                // over-long asset_urn) would just repeat, so surface it immediately (评审 S3-1).
+                if (attempt >= maxAttempts || !isVersionNoCollision(dive)) {
+                    throw dive;
                 }
+                log.warn("version_no collision while snapshotting (attempt {}/{}), retrying: {}",
+                        attempt, maxAttempts, dive.getMostSpecificCause().getMessage());
+                sleepBackoff(attempt);
             }
         }
     }
 
-    /** The atomic snapshot + diff, run in its own transaction so a collision fully rolls back. */
-    @Transactional
+    private static boolean isVersionNoCollision(DataIntegrityViolationException dive) {
+        for (Throwable t = dive; t != null; t = t.getCause()) {
+            String msg = t.getMessage();
+            if (msg != null) {
+                String upper = msg.toUpperCase();
+                if (upper.contains(VERSION_NO_UK.toUpperCase()) || upper.contains("VERSION_NO")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static void sleepBackoff(int attempt) {
+        try {
+            Thread.sleep(20L * attempt);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * The atomic snapshot + diff. Runs in a NEW transaction ({@link Propagation#REQUIRES_NEW}) so
+     * each retry of {@link #createSnapshot} is genuinely independent and a collision fully rolls
+     * back (评审 S3-2); invoke only through the proxy (via {@code self} / {@code createSnapshot}).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public MetaVersion doSnapshot(String note) {
         Optional<MetaVersion> prev = versionRepo.findTopByOrderByVersionNoDesc();
-        // Exclude the previous snapshot's DROPPED tombstones from the comparison baseline: they
-        // are history-only markers, not "still present" entries. Keeping them would (a) re-count a
-        // long-deleted asset as DROPPED on every later snapshot and (b) mis-classify a dropped-and-
-        // rebuilt asset as RETAINED/CHANGED against the stale signature (S2-1).
-        Map<String, MetaVersionItem> prevItems = prev
-                .map(v -> indexByUrn(itemRepo.findByVersionId(v.getId()).stream()
-                        .filter(it -> !"DROPPED".equals(it.getChangeType()))
-                        .toList()))
-                .orElseGet(Map::of);
+        // A snapshot captured under a different signature algorithm (older CURRENT_SIG_ALGO, or a
+        // pre-tag legacy row stored as null) freezes incomparable hashes: treat it as "no baseline"
+        // and re-pin FULL rather than diff against it (which would mark nearly every asset CHANGED
+        // with empty deltas) (评审 S2-1).
+        boolean comparableBaseline = prev.isPresent() && CURRENT_SIG_ALGO.equals(prev.get().getSignatureAlgo());
+        Map<String, MetaVersionItem> prevItems = comparableBaseline
+                ? baselineItems(prev.get())
+                : Map.of();
 
         MetaVersion version = new MetaVersion();
         version.setVersionNo(prev.map(v -> v.getVersionNo() + 1).orElse(1));
-        version.setBaselineType(prev.isEmpty() ? "FULL" : "INCREMENT");
+        version.setBaselineType(comparableBaseline ? "INCREMENT" : "FULL");
         version.setSnapshotAt(Instant.now());
         version.setNote(note);
+        version.setSignatureAlgo(CURRENT_SIG_ALGO);
 
         List<MetaAsset> assets = assetRepo.findAllByOrderByNameAsc();
         version.setAssetCount(assets.size());
@@ -145,8 +191,10 @@ public class VersionService {
     public List<ChangedAsset> changedAssets(Long versionId) {
         MetaVersion cur = versionRepo.findById(versionId).orElseThrow();
         Optional<MetaVersion> prev = versionRepo.findByVersionNo(cur.getVersionNo() - 1);
-        Map<String, String> prevSig = prev.isPresent()
-                ? signatures(itemRepo.findByVersionId(prev.get().getId()))
+        // Diff only against a comparable predecessor (same signature algorithm); a re-pin boundary
+        // or a legacy snapshot has no meaningful per-column delta to report (评审 S2-1 / S3-4).
+        Map<String, String> prevSig = (prev.isPresent() && CURRENT_SIG_ALGO.equals(prev.get().getSignatureAlgo()))
+                ? signatures(new ArrayList<>(baselineItems(prev.get()).values()))
                 : Map.of();
 
         List<ChangedAsset> out = new ArrayList<>();
@@ -154,6 +202,13 @@ public class VersionService {
             out.add(delta(it, prevSig.getOrDefault(it.getAssetUrn(), "")));
         }
         return out;
+    }
+
+    /** The previous snapshot's live entries: its items minus DROPPED tombstones (评审 S2-1 / S3-4). */
+    private Map<String, MetaVersionItem> baselineItems(MetaVersion prev) {
+        return indexByUrn(itemRepo.findByVersionId(prev.getId()).stream()
+                .filter(it -> !"DROPPED".equals(it.getChangeType()))
+                .toList());
     }
 
     // ---- signature & delta helpers ---------------------------------------------------------
