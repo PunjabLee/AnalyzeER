@@ -1,10 +1,13 @@
 package com.dam.web;
 
 import com.dam.domain.MetaAsset;
+import com.dam.lineage.ImpactExportService;
+import com.dam.lineage.ImpactExportService.ImpactReport;
 import com.dam.lineage.LineageService;
 import com.dam.lineage.LineageService.Direction;
 import com.dam.repository.MetaAssetRepository;
 import com.dam.web.dto.Dtos.LineageView;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,10 +28,13 @@ public class LineageController {
 
     private final MetaAssetRepository assetRepo;
     private final LineageService lineage;
+    private final ImpactExportService impactExport;
 
-    public LineageController(MetaAssetRepository assetRepo, LineageService lineage) {
+    public LineageController(MetaAssetRepository assetRepo, LineageService lineage,
+                             ImpactExportService impactExport) {
         this.assetRepo = assetRepo;
         this.lineage = lineage;
+        this.impactExport = impactExport;
     }
 
     /**
@@ -52,5 +58,50 @@ public class LineageController {
         }
         MetaAsset a = root.get();
         return ResponseEntity.ok(lineage.trace(a.getName(), a.getId(), direction, depth));
+    }
+
+    /**
+     * M3 exit criteria — flat change-impact list of the root's DOWNSTREAM subtree, downloadable.
+     * One row per impacted table (root excluded) with the impact path and the propagating relation.
+     *
+     * @param format {@code csv} (Excel-ready, default) | {@code json} | {@code yaml}
+     */
+    @GetMapping("/impact")
+    public ResponseEntity<String> impact(@RequestParam String asset,
+                                         @RequestParam(defaultValue = "6") int depth,
+                                         @RequestParam(defaultValue = "csv") String format) {
+        Optional<MetaAsset> root = assetRepo.findByNameIgnoreCase(asset.trim());
+        if (root.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        String fmt = format.trim().toLowerCase(Locale.ROOT);
+        if (!fmt.equals("csv") && !fmt.equals("json") && !fmt.equals("yaml")) {
+            return ResponseEntity.badRequest().build();
+        }
+        MetaAsset a = root.get();
+        ImpactReport report = impactExport.build(a.getName(), depth);
+        String body;
+        MediaType media;
+        switch (fmt) {
+            case "json" -> {
+                body = impactExport.toJson(report);
+                media = MediaType.APPLICATION_JSON;
+            }
+            case "yaml" -> {
+                body = impactExport.toYaml(report);
+                media = MediaType.parseMediaType("application/yaml");
+            }
+            default -> {
+                body = impactExport.toCsv(report);
+                media = MediaType.parseMediaType("text/csv;charset=UTF-8");
+            }
+        }
+        // filename derives from the resolved catalog name, never the raw request param
+        String filename = "impact-" + a.getName().toLowerCase(Locale.ROOT) + "-d" + report.maxDepth() + "." + fmt;
+        return ResponseEntity.ok()
+                .contentType(media)
+                .header("Content-Disposition", org.springframework.http.ContentDisposition.attachment()
+                        .filename(filename).build().toString())
+                .body(body);
     }
 }

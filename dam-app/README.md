@@ -127,6 +127,14 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 实测（H2 与真实 MySQL 8 逐位一致）：`jf_sales_order` 枢纽 **downstream 41 节点/48 边**（深度分布 0:1/1:20/2:6/3:6/4:8，如 `jf_pay_request`/`jf_inventory_frozen_record`/`jf_receivable_*`）、**upstream 15 节点/17 边**（`jf_customer`/`jf_trader`/`jf_settlement_unit`/`jf_brand`…）；`danglingEdges=0`、`truncated=false`（达成退出标准 G3：枢纽正/反向可追溯 + 影响分析）。`mvn test` **72/72**（新增 `LineageQueryTest` 4 例）。
 - 注：CTE 返回行数（MySQL 探针 73）> 唯一节点数（41）——因多路径汇聚，service 按最小深度去重为唯一节点集。
 
+### M-5 整改（评审团 Major）：变更影响清单可导出（M3 退出标准第②项，`mvn test` 82/82）
+
+- `LineageNode` 新增 `parentNode`/`viaRelationId`（最短路径树的入边信息，root 为 null）；`LineageService` 采集行时同步维护树父端，并对 H2 把 CTE `parent_node/edge_id` 列统一成字符串的类型差异做容错解析（`toLong`，双方言实测通过）。
+- 新增 `ImpactExportService`：DOWNSTREAM 子图摊平为**影响清单**（每受影响表一行，root 自身不入列），携带深度、传播父表、经由 FK 列、完整影响路径（`root → … → 表`）、基数/证据/置信/出处；序列化为 **CSV（Excel-ready，UTF-8 BOM + RFC4180 转义）/ JSON / YAML**。
+- 新端点 `GET /api/lineage/impact?asset=&depth=&format=csv|json|yaml`（GET 免登录，与血缘查询一致）；`Content-Disposition: attachment` 文件名取目录内真实表名（非请求原文）；未知表 404、非法格式 400。`ImpactExportTest` 4 例（清单形状/三视图一致性/端点下载/错误路径），`mvn test` **82/82**。
+- 真实 MySQL 8 冒烟：链式重灌幂等（`created=0/reused=413/removed=0`、总 487）；`impact?asset=jf_sales_order&depth=6` 得 **40 行 = 血缘节点数 41−1**（自洽），首行路径 `jf_sales_order → jf_inventory_frozen_record`，②逻辑FK列与①ER证据摘录两出处并存；yaml/json/404/400 全验。
+- **冒烟新发现（记入卫生批）**：重跑 `POST /ingest/ddl` 重建资产 id 后，旧①边不被任何清扫覆盖，实测残留 74 条双端悬空边（总 561≠487）——本次冒烟手工清理恢复基线；修复方向=在摄取链中加入悬空边清扫（与 C-2 stale 清扫同思路），属数据卫生不变式补强。
+
 ## 关键设计口径（对齐评审结论）
 
 - **结构 ← DDL，关系 ← ER 证据**：本库 0 外键，`DdlParser` 只摄取表/列结构；

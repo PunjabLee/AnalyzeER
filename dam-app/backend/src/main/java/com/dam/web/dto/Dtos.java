@@ -86,13 +86,17 @@ public final class Dtos {
     /**
      * M3-2 lineage: one reachable table in a recursive-blood lineage trace.
      * depth = minimum hops from the root (a node reachable by several paths keeps its shortest).
+     * parentNode/viaRelationId describe the shortest-path tree edge that first reached this node
+     * (both null on the root) — the impact-list export reconstructs root→node paths from them.
      */
     public record LineageNode(
             Long assetId,
             String name,
             int depth,
             String grading,
-            String domainCode) { }
+            String domainCode,
+            Long parentNode,
+            Long viaRelationId) { }
 
     /** one traversed edge of the lineage subgraph (endpoints resolved against the catalog) */
     public record LineageEdge(

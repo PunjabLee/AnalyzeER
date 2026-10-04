@@ -103,17 +103,32 @@ public class LineageService {
 
         boolean truncated = rows.size() > NODE_LIMIT;
         Map<Long, Integer> minDepth = new LinkedHashMap<>();
+        Map<Long, Long> parentOf = new HashMap<>();    // shortest-path tree parent (impact-list paths)
+        Map<Long, Long> viaEdgeOf = new HashMap<>();   // edge id that first reached the node
         Set<Long> edgeIds = new LinkedHashSet<>();
         for (Object row : rows) {
             Object[] r = (Object[]) row;
             long node = ((Number) r[0]).longValue();
             int d = ((Number) r[1]).intValue();
-            minDepth.merge(node, d, Math::min);           // shortest path wins across multiple routes
-            // the depth-0 anchor row carries :root as a sentinel in parent_node/edge_id (kept BIGINT so
-            // both H2 and MySQL resolve the column type consistently — MySQL rejects CAST(NULL AS BIGINT));
-            // only real traversal rows (depth > 0) contribute an edge id.
-            if (d > 0 && r[3] != null) {
-                edgeIds.add(((Number) r[3]).longValue());
+            // the depth-0 anchor row carries :root as a sentinel in parent_node/edge_id; H2 widens
+            // those CTE columns to the CHAR type the sentinel parameter takes, so traversal values can
+            // arrive as either Number (MySQL) or String (H2) — parse leniently, never blind-cast.
+            Long parent = null;
+            Long edge = null;
+            if (d > 0) {
+                parent = toLong(r[2]);
+                edge = toLong(r[3]);
+                if (edge != null) {
+                    edgeIds.add(edge);
+                }
+            }
+            Integer best = minDepth.get(node);
+            if (best == null || d < best) {            // shortest path wins across multiple routes
+                minDepth.put(node, d);
+                if (d > 0) {                           // the depth-0 anchor carries :root as its own parent
+                    parentOf.put(node, parent);
+                    viaEdgeOf.put(node, edge);
+                }
             }
         }
 
@@ -126,7 +141,9 @@ public class LineageService {
             if (a == null) {
                 continue;   // edge pointed at an id no longer in the catalog — skip, never fabricate
             }
-            nodes.add(new LineageNode(a.getId(), a.getName(), e.getValue(), a.getGrading(), a.getDomainCode()));
+            boolean isRoot = e.getKey() == rootId;
+            nodes.add(new LineageNode(a.getId(), a.getName(), e.getValue(), a.getGrading(), a.getDomainCode(),
+                    isRoot ? null : parentOf.get(e.getKey()), isRoot ? null : viaEdgeOf.get(e.getKey())));
         }
         nodes.sort(Comparator.comparingInt(LineageNode::depth)
                 .thenComparing(LineageNode::name, Comparator.nullsLast(Comparator.naturalOrder())));
@@ -144,5 +161,20 @@ public class LineageService {
     private static String nameOf(Map<Long, MetaAsset> byId, Long id) {
         MetaAsset a = id == null ? null : byId.get(id);
         return a == null ? null : a.getName();
+    }
+
+    /** dialect-tolerant BIGINT reader: MySQL returns Number, H2 may stringify CTE-unified columns */
+    private static Long toLong(Object v) {
+        if (v == null) {
+            return null;
+        }
+        if (v instanceof Number n) {
+            return n.longValue();
+        }
+        try {
+            return Long.parseLong(v.toString().trim());
+        } catch (NumberFormatException notNumeric) {
+            return null;   // sentinel text (e.g. the anchor's own :root cast) — treat as absent
+        }
     }
 }
