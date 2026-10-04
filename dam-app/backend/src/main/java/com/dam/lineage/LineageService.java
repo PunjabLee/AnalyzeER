@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -63,8 +64,12 @@ public class LineageService {
     }
 
     private static final int HARD_MAX_DEPTH = 10;
-    /** per-view node ceiling (PLAN §2.3: a single view renders ≤ 200 nodes); beyond this → truncated */
-    private static final int NODE_LIMIT = 300;
+    /**
+     * Per-view node ceiling — PLAN 血缘可视化的单视图渲染上限 200 节点（NFR），超出即确定性截断；
+     * 可经 {@code dam.lineage.node-limit} 配置下调以便测试截断分支（M-2）。
+     */
+    @org.springframework.beans.factory.annotation.Value("${dam.lineage.node-limit:200}")
+    private int nodeLimit;
 
     private final EntityManager em;
     private final MetaAssetRepository assetRepo;
@@ -93,15 +98,18 @@ public class LineageService {
                 "  FROM meta_relation r JOIN lin l ON " + join + " = l.node" +
                 "  WHERE " + next + " IS NOT NULL AND l.depth < :maxDepth" +
                 "    AND LOCATE(CONCAT(',', " + next + ", ','), CONCAT(',', l.path, ',')) = 0" +
-                ") SELECT node, depth, parent_node, edge_id FROM lin";
+                ") SELECT node, depth, parent_node, edge_id FROM lin ORDER BY depth, node";
 
+        // deterministic order (depth asc, node asc) BEFORE the row cap: parents always arrive before
+        // their children, so a truncated run drops only the deepest tail and the kept set stays
+        // parent-closed — the same LIMIT on unordered rows would not (M-2).
         List<?> rows = em.createNativeQuery(sql)
                 .setParameter("root", rootId)
                 .setParameter("maxDepth", depth)
-                .setMaxResults(NODE_LIMIT + 1)
+                .setMaxResults(nodeLimit + 1)
                 .getResultList();
 
-        boolean truncated = rows.size() > NODE_LIMIT;
+        boolean truncated = rows.size() > nodeLimit;
         Map<Long, Integer> minDepth = new LinkedHashMap<>();
         Map<Long, Long> parentOf = new HashMap<>();    // shortest-path tree parent (impact-list paths)
         Map<Long, Long> viaEdgeOf = new HashMap<>();   // edge id that first reached the node
@@ -131,6 +139,15 @@ public class LineageService {
                 }
             }
         }
+        // hard node cap: rows arrived depth-ordered, so evicting the tail keeps a parent-closed prefix
+        if (minDepth.size() > nodeLimit) {
+            List<Long> evicted = new ArrayList<>(minDepth.keySet()).subList(nodeLimit, minDepth.size());
+            evicted.forEach(node -> {
+                minDepth.remove(node);
+                parentOf.remove(node);
+                viaEdgeOf.remove(node);
+            });
+        }
 
         Map<Long, MetaAsset> byId = new HashMap<>();
         assetRepo.findAllById(minDepth.keySet()).forEach(a -> byId.put(a.getId(), a));
@@ -149,7 +166,14 @@ public class LineageService {
                 .thenComparing(LineageNode::name, Comparator.nullsLast(Comparator.naturalOrder())));
 
         List<LineageEdge> edges = new ArrayList<>();
+        Set<Long> finalIds = new HashSet<>();
+        nodes.forEach(n -> finalIds.add(n.assetId()));
         for (MetaRelation r : relRepo.findAllById(edgeIds)) {
+            // closed-subgraph invariant survives truncation AND catalog evaporation: keep an edge
+            // only when BOTH endpoints are in the returned node set (never a dangling half-edge).
+            if (!finalIds.contains(r.getFromAssetId()) || !finalIds.contains(r.getToAssetId())) {
+                continue;
+            }
             edges.add(new LineageEdge(r.getId(), r.getFromAssetId(), nameOf(byId, r.getFromAssetId()),
                     r.getFromColumn(), r.getToAssetId(), nameOf(byId, r.getToAssetId()),
                     r.getCardinality(), r.getEvidenceLevel(), r.getConfidence(), r.getOrigin()));

@@ -20,9 +20,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -70,14 +72,18 @@ public class RelationIngestionService {
      * @param created   rows newly inserted (no identity match existed)
      * @param reused    existing rows refreshed in place, keeping their confirmation verdicts
      * @param removed   逻辑FK列 rows whose source evidence disappeared from the documents
+     * @param danglingRemoved edges (ANY origin) whose endpoints no longer resolve in the catalog —
+     *                        garbage left by an asset rebuild such as {@code POST /ingest/ddl}
+     *                        re-numbering ids (M-5 smoke finding; hygiene invariant)
      */
     public record RelationReport(int edges, int resolved, int unresolved, int files,
-                                 int created, int reused, int removed) {
+                                 int created, int reused, int removed, int danglingRemoved) {
         @Override
         public String toString() {
             return "RelationReport{edges=" + edges + ", resolved=" + resolved
                     + ", unresolved=" + unresolved + ", files=" + files
-                    + ", created=" + created + ", reused=" + reused + ", removed=" + removed + "}";
+                    + ", created=" + created + ", reused=" + reused + ", removed=" + removed
+                    + ", danglingRemoved=" + danglingRemoved + "}";
         }
     }
 
@@ -150,6 +156,22 @@ public class RelationIngestionService {
         relRepo.deleteAll(stale);
         relRepo.flush();
 
+        // hygiene sweep (M-5 smoke finding): an asset rebuild (POST /ingest/ddl) re-numbers ids and
+        // strands edges of ANY origin — including channel-1 rows the C-2 scope must never touch.
+        // Deleting endpoints that no longer resolve keeps the lineage closure invariant trustworthy.
+        Set<Long> liveAssetIds = new HashSet<>();
+        byName.values().forEach(a -> liveAssetIds.add(a.getId()));
+        List<MetaRelation> dangling = new ArrayList<>();
+        for (MetaRelation r : relRepo.findAll()) {
+            boolean fromGone = r.getFromAssetId() == null || !liveAssetIds.contains(r.getFromAssetId());
+            boolean toGone = r.getToAssetId() != null && !liveAssetIds.contains(r.getToAssetId());
+            if (fromGone || toGone) {
+                dangling.add(r);
+            }
+        }
+        relRepo.deleteAll(dangling);
+        relRepo.flush();
+
         // resolved/unresolved recounted from the store in the channel-2 scope, so the report
         // also reflects ER-pinned to_asset_id values that survived the reuse
         int resolved2 = 0;
@@ -163,7 +185,7 @@ public class RelationIngestionService {
             }
         }
         RelationReport report = new RelationReport(edges, resolved2, total2 - resolved2, files,
-                created.size(), reused, stale.size());
+                created.size(), reused, stale.size(), dangling.size());
         log.info("Relations upserted: {}", report);
         return report;
     }

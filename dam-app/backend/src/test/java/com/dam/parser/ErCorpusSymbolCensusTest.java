@@ -17,10 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>This is the regression guard the unit tests cannot give: they pin individual symbols, but a
  * symbol class silently mis-parsed at scale would sail through. If the Mermaid notation drifts or
- * the parser degrades, a bound breaks and CI reddens. Bounds are tuned to the observed corpus
- * ({@code total=457 · ONE_TO_MANY=341 · AMBIGUOUS=85 · ONE_TO_ONE=15 · UNSUPPORTED_SYMBOL=13 ·
- * MANY_TO_MANY=3 · MANY_TO_ONE=0}) — generous enough to survive content edits, tight enough to
- * catch a bucket collapsing.
+ * the parser degrades, a bound breaks and CI reddens. Bounds are tuned to the CURRENT observed
+ * corpus ({@code total=456 · ONE_TO_MANY=293 · AMBIGUOUS=126 · ONE_TO_ONE=13 ·
+ * UNSUPPORTED_SYMBOL=13 · MANY_TO_MANY=3 · MANY_TO_ONE=8}) — generous enough to survive content
+ * edits, tight enough to catch a bucket collapsing.
  */
 class ErCorpusSymbolCensusTest {
 
@@ -53,18 +53,19 @@ class ErCorpusSymbolCensusTest {
         //     the two trust-gate buckets must each stay above their observed floor.
         assertThat(total).as("total ER relation lines").isGreaterThan(430);
         assertThat(census.getOrDefault(ParsedErRelation.Kind.ONE_TO_MANY, 0))
-                .as("dominant 一↔多 direction rows (child owns FK)").isGreaterThan(250);
+                .as("dominant 一↔多 direction rows (child owns FK)").isGreaterThan(270);
         assertThat(census.getOrDefault(ParsedErRelation.Kind.ONE_TO_ONE, 0))
-                .as("1:1 rows (enrich only, never resolve prose)").isGreaterThanOrEqualTo(10);
+                .as("1:1 rows (enrich only, never resolve prose)").isGreaterThanOrEqualTo(12);
         assertThat(census.getOrDefault(ParsedErRelation.Kind.MANY_TO_MANY, 0))
                 .as("N:N self-associations (no new edge)").isGreaterThanOrEqualTo(3);
         assertThat(census.getOrDefault(ParsedErRelation.Kind.AMBIGUOUS, 0))
-                .as("symbol-vs-label cardinality clashes flagged, not silently enriched").isGreaterThanOrEqualTo(80);
+                .as("symbol-vs-label cardinality clashes flagged, not silently enriched").isGreaterThanOrEqualTo(120);
         assertThat(census.getOrDefault(ParsedErRelation.Kind.UNSUPPORTED_SYMBOL, 0))
                 .as("malformed single-marker rows counted, not dropped").isGreaterThanOrEqualTo(13);
-        // NOTE: MANY_TO_ONE is deliberately NOT asserted — the whole corpus writes the FK-owning
-        // child on the RIGHT (right-many), so reverse-direction rows are currently 0. A non-zero
-        // count there would be fine; we simply do not require it.
+        // MANY_TO_ONE (right-many rows, FK-owner written on the LEFT) exists in the corpus — measured
+        // 8 — and IS asserted: S1 direction fixes turned these into a real, load-bearing bucket.
+        assertThat(census.getOrDefault(ParsedErRelation.Kind.MANY_TO_ONE, 0))
+                .as("reverse-direction rows").isGreaterThanOrEqualTo(8);
 
         // sanity: the six Kind buckets must account for exactly the total (nothing lost to null)
         int accounted = census.values().stream().mapToInt(Integer::intValue).sum();

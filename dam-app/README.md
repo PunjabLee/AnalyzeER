@@ -133,7 +133,14 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 新增 `ImpactExportService`：DOWNSTREAM 子图摊平为**影响清单**（每受影响表一行，root 自身不入列），携带深度、传播父表、经由 FK 列、完整影响路径（`root → … → 表`）、基数/证据/置信/出处；序列化为 **CSV（Excel-ready，UTF-8 BOM + RFC4180 转义）/ JSON / YAML**。
 - 新端点 `GET /api/lineage/impact?asset=&depth=&format=csv|json|yaml`（GET 免登录，与血缘查询一致）；`Content-Disposition: attachment` 文件名取目录内真实表名（非请求原文）；未知表 404、非法格式 400。`ImpactExportTest` 4 例（清单形状/三视图一致性/端点下载/错误路径），`mvn test` **82/82**。
 - 真实 MySQL 8 冒烟：链式重灌幂等（`created=0/reused=413/removed=0`、总 487）；`impact?asset=jf_sales_order&depth=6` 得 **40 行 = 血缘节点数 41−1**（自洽），首行路径 `jf_sales_order → jf_inventory_frozen_record`，②逻辑FK列与①ER证据摘录两出处并存；yaml/json/404/400 全验。
-- **冒烟新发现（记入卫生批）**：重跑 `POST /ingest/ddl` 重建资产 id 后，旧①边不被任何清扫覆盖，实测残留 74 条双端悬空边（总 561≠487）——本次冒烟手工清理恢复基线；修复方向=在摄取链中加入悬空边清扫（与 C-2 stale 清扫同思路），属数据卫生不变式补强。
+- **冒烟新发现（已由卫生批修复）**：重跑 `POST /ingest/ddl` 重建资产 id 后，旧①边不被任何清扫覆盖，实测残留 74 条双端悬空边（总 561≠487）——本次冒烟手工清理恢复基线；卫生批已落地悬空边清扫（见下）。
+
+### 评审团卫生批（M-2/M-3/M-1 + 悬空边清扫，`mvn test` 85/85，Skipped=3 为手工探针）
+
+- **M-2 截断确定性**：血缘 CTE 外层新增 `ORDER BY depth, node` 后再限行——父行必在子行前到达，截断只丢最深尾部、保留集天然父闭合；节点上限由硬编码 300 改为 `dam.lineage.node-limit`（默认 **200**，对齐 PLAN 单视图渲染 NFR）；新增裁剪后仍超限时按深度序淘汰尾部节点，且**输出边双端必须均在返回节点集**（闭合子图不变式在截断下也成立）；`LineageTruncationTest`（cap=5 触发真实截断分支）断言 truncated/恰限/父闭/边闭。
+- **M-3 回归固化**：`LineageQueryTest` 退出标准数字由下限改**精确断言** downstream **41/48**、upstream **15/17**（H2 与真实 MySQL 8 逐位一致）；方言探针结论入库为 `MysqlDialectProbeTest`（@Disabled 手工门：需 dam-mysql 容器；固化 CTE 显式列表支持/`CAST(NULL AS BIGINT)` 被拒/带 `:root` 哨兵的真实血缘 SQL 可执行三探针）。
+- **M-1 census 基线刷新**：`ErCorpusSymbolCensusTest` javadoc 与边界改为当前实测（total=456 · ONE_TO_MANY=293 · AMBIGUOUS=126 · ONE_TO_ONE=13 · UNSUPPORTED=13 · N:N=3 · MANY_TO_ONE=8），并**新增 MANY_TO_ONE≥8 断言**（S1 方向修复后该桶已是承重桶）。
+- **悬空边清扫（M-5 冒烟发现）**：②链尾部新增全源清扫——`from_asset_id` 缺失或已解析 `to_asset_id` 缺失的边（含①边）一律删，`RelationReport` 新增 `danglingRemoved`；真实 MySQL 8 实测闭环：`/ddl` 重建→`/relations` 报 `danglingRemoved=74`→`/er-evidence` 重铺→**自动恢复 ②413/①74/总487、悬空=0**，无需手工干预；血缘/影响清单基线（41/48·15/17·impact 40）零侵蚀。
 
 ## 关键设计口径（对齐评审结论）
 

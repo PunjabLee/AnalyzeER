@@ -43,8 +43,10 @@ class LineageQueryTest {
             assertThat(n.assetId()).isEqualTo(r.getId());
             assertThat(n.depth()).isZero();   // the root is always the depth-0 anchor
         });
-        // a genuinely-connected hub reaches a meaningful downstream impact set
-        assertThat(v.nodeCount()).isGreaterThan(10);
+        // a genuinely-connected hub reaches a meaningful downstream impact set — EXACT regression
+        // numbers (M-3): H2 and real MySQL 8 were measured bit-identical at the M3-2/C batches
+        assertThat(v.nodeCount()).as("downstream nodes of jf_sales_order").isEqualTo(41);
+        assertThat(v.edges()).as("downstream edges of jf_sales_order").hasSize(48);
         assertThat(v.truncated()).isFalse();
     }
 
@@ -53,7 +55,8 @@ class LineageQueryTest {
         MetaAsset r = hub();
         LineageView v = lineage.trace(r.getName(), r.getId(), Direction.UPSTREAM, 10);
         assertThat(v.direction()).isEqualTo("UPSTREAM");
-        assertThat(v.nodeCount()).isGreaterThan(1);   // references customer / product / contract ...
+        assertThat(v.nodeCount()).as("upstream nodes of jf_sales_order").isEqualTo(15);
+        assertThat(v.edges()).as("upstream edges of jf_sales_order").hasSize(17);
     }
 
     @Test

@@ -20,6 +20,9 @@ spring:
 
 # M0 ingestion settings
 dam:
+  lineage:
+    # M-2: per-view node ceiling for lineage traces (单视图渲染上限 200)；超出即确定性截断 truncated=true
+    node-limit: 200
   ingest:
     # default DDL sample to ingest (resolved relative to backend working dir)
     default-sql-path: ../../test_erp.sql

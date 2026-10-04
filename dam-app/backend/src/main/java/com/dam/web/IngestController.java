@@ -43,8 +43,10 @@ public class IngestController {
 
     /**
      * POST /api/ingest/relations ; upserts FK[...] edges from 03-逻辑数据模型 (channel-2, incremental:
-     * confirm_status/已确认/驳回 verdicts and all ER证据摘录 edges survive — C-2 remediation) and then
-     * re-overlays ER evidence (channel-1). The overlay follows because channel-2 refreshes
+     * confirm_status/已确认/驳回 verdicts and all ER证据摘录 edges survive — C-2 remediation), sweeps
+     * edges whose endpoints no longer resolve in the catalog (danglingRemoved — hygiene invariant
+     * after an asset rebuild such as POST /ingest/ddl), and then re-overlays ER evidence
+     * (channel-1). The overlay follows because channel-2 refreshes
      * document-derived facts (evidence/confidence/basis), so channel-1 must recompute its
      * upgrades, cardinality and conflict marks on top of the fresh base.
      */

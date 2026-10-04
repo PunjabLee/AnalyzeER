@@ -115,4 +115,30 @@ class RelationReingestTest {
             relRepo.deleteById(manual.getId());   // leave the shared store pristine for other tests
         }
     }
+
+    @Test
+    void danglingEdgesFromAnAssetRebuildAreSwept() {
+        // M-5 smoke finding: POST /ingest/ddl re-numbers asset ids and strands OLD edges of any
+        // origin — endpoints no longer resolving in the catalog are garbage and must be swept.
+        MetaRelation orphan = new MetaRelation();
+        orphan.setFromAssetId(900_001L);                 // ids outside the catalog by construction
+        orphan.setFromColumn("sales_order_id");
+        orphan.setToAssetId(900_002L);
+        orphan.setTargetRaw("zz_gone_parent");
+        orphan.setEvidenceLevel("字段命名");
+        orphan.setOrigin("ER证据摘录");                    // channel-1 shape: sweep is origin-agnostic
+        orphan.setConfidence(0.6);
+        relRepo.save(orphan);
+
+        long erBefore = countByOrigin("ER证据摘录");       // includes the orphan
+        long totalBefore = relRepo.count();
+
+        RelationIngestionService.RelationReport report = relationService.ingest(null);
+
+        assertEquals(1, report.danglingRemoved(), "exactly the one stranded edge is reported");
+        assertTrue(relRepo.findById(orphan.getId()).isEmpty(), "dangling edge must not survive");
+        assertEquals(erBefore - 1, countByOrigin("ER证据摘录"), "live ER edges stay untouched");
+        assertEquals(413, countByOrigin("逻辑FK列"), "channel-2 baseline unchanged by the sweep");
+        assertEquals(totalBefore - 1, relRepo.count());
+    }
 }
