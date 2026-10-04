@@ -25,3 +25,17 @@ _cm.txt
 /.qoder/
 /dam-app/frontend/dist/
 /dam-app/frontend/node_modules/
+
+# ---- GraphRAG 编排：临时/缓存（rag-orchestrator 单点维护，C-9/N-4）----
+# Python 字节码与测试缓存（各执行专家产物，不入库）
+__pycache__/
+*.pyc
+# 会话期临时取证/门禁脚本（workspace 根下 .tmp，非 er-model 的 _* 口径所能覆盖）
+/.tmp/
+
+# ---- GraphRAG：可重建的全量派生数据（依 C-10 默认不入库）----
+# 由 graphrag/ingest/pipeline.py 确定性重建；交付以「源码 + graphrag/data/meta/*.json + 门禁报告」为准
+# （eval-M1 §8-① 裁决：二进制 SQLite 与全量 dump 入库徒增历史膨胀）
+graphrag/data/l0_graph.json
+graphrag/data/l0_edges.jsonl
+graphrag/data/l0_index.db

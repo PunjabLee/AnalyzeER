@@ -1,0 +1,469 @@
+{
+  "milestone": "M1",
+  "generator": "graphrag/ingest/pipeline",
+  "input_sources": [
+    "er-model/*",
+    "test_erp.sql"
+  ],
+  "contract": "graphrag/spec (M0 冻结)",
+  "stack": "Python3 + SQLite3.50 FTS5(porter)/BM25 + 内存属性图/JSON（无向量/LLM/重型图库）",
+  "graph_summary": {
+    "labels": {
+      "Domain": 20,
+      "Table": 1322,
+      "Column": 6428,
+      "EvidenceSrc": 483,
+      "Issue": 27
+    },
+    "edge_types": {
+      "BELONGS_TO_DOMAIN": 1202,
+      "IS_COLUMN_OF": 6428,
+      "SAME_FAMILY_AS": 778,
+      "RELATES_TO": 483,
+      "SUPPORTED_BY": 483,
+      "DERIVED_FROM": 113,
+      "HAS_ISSUE": 11
+    },
+    "table_tiers": {
+      "B": 853,
+      "C": 120,
+      "A": 349
+    }
+  },
+  "edge_lines_exported": 9498,
+  "fts_indexed_nodes": 7797,
+  "tiering": {
+    "rule": "N-2 先剔 _bak_/test_ 归 C，再按前缀归 A/B",
+    "counts": {
+      "A": 349,
+      "B": 853,
+      "C": 120,
+      "jf_a": 332,
+      "ot_a": 17,
+      "b_lcap": 450,
+      "b_quartz": 275,
+      "b_activiti": 128,
+      "c_bak": 117,
+      "c_test": 3,
+      "registered_total": 1322
+    },
+    "traversable": "A 级 349（含 OT 17，suspected_legacy 5）"
+  },
+  "ddl_metrics": {
+    "ddl_table_total": 1322,
+    "pk_declared_tables": 1311,
+    "no_pk_tables": 11,
+    "total_columns": 16591
+  },
+  "relations": {
+    "01_total_connectors": 456,
+    "01_distinct_shapes": 12,
+    "01_edges_after_external": 454,
+    "01_malformed": 13,
+    "01_per_domain": {
+      "B-FAMILY": 26,
+      "D01": 32,
+      "D02": 35,
+      "D03": 30,
+      "D04": 56,
+      "D05": 24,
+      "D06": 31,
+      "D07": 36,
+      "D08": 34,
+      "D09": 44,
+      "D10": 33,
+      "D11": 18,
+      "D12": 9,
+      "D13": 10,
+      "D14": 6,
+      "D15": 14,
+      "D16": 6,
+      "D17": 4,
+      "D18": 5,
+      "OT": 3
+    },
+    "05_total": 33,
+    "external_skipped_01": 2,
+    "stub_resolved_01": 9,
+    "pending_confirmation": 4,
+    "all_is_inferred": true,
+    "max_evidence_level": "comment_explicit",
+    "disclaimer": "全库 0 外键，关系为逆向推断"
+  },
+  "derived_from": {
+    "explicit_count": 5,
+    "naming_derived_classified": 115,
+    "valid_edges": 106,
+    "copy1_edges": 2,
+    "dangling": 9,
+    "dangling_tables": [
+      "account_balance_use_log_bak_20251127173028",
+      "credit_line_use_log_bak_20251127173028",
+      "customer_equity_item_mapping_bak_20251127173028",
+      "customer_quota_bak_20251127173028",
+      "quality_grade_bak_20251127173028",
+      "quality_standard_test_project_mapping_bak_20251122145005",
+      "reconciliation_bak_20251127173028",
+      "remark_information_bak_20251127173028",
+      "trace_quota_bak_20251205125025"
+    ],
+    "note": "9 张源表不可解析（04/05 标归属待确认）→ 登记不造边（schema §2.2）"
+  },
+  "issues": {
+    "total": 27,
+    "per_category": {
+      "A": 3,
+      "B": 4,
+      "C": 4,
+      "D": 5,
+      "E": 3,
+      "F": 4,
+      "G": 4
+    },
+    "caliber_delta": "00/Agents 标 30 → 实测采 27（C-δ，不吞差）"
+  },
+  "header_normalization": {
+    "field_variants": 11,
+    "field_rows": 292,
+    "nonfield_variants": 8,
+    "nonfield_rows": 17,
+    "total_header_rows": 309,
+    "unmapped": 0,
+    "crosscheck_with_ddl": {
+      "tables_checked": 223,
+      "atomic_matched_total": 3525,
+      "shared_prefix_abbrev_total": 4,
+      "shorthand_ambiguous_total": 3,
+      "name_mismatch_total": 41,
+      "audit_expanded_tables": 95,
+      "audit_columns_present_in_ddl": 95,
+      "arbiter": "test_erp.sql（Column 节点由 DDL 直取；文档残差仅信号，DDL 为准）"
+    }
+  },
+  "domain_declared": {
+    "D01": 18,
+    "D02": 21,
+    "D03": 19,
+    "D04": 33,
+    "D05": 13,
+    "D06": 15,
+    "D07": 23,
+    "D08": 27,
+    "D09": 31,
+    "D10": 24,
+    "D11": 21,
+    "D12": 11,
+    "D13": 16,
+    "D14": 34,
+    "D15": 6,
+    "D16": 10,
+    "D17": 6,
+    "D18": 4,
+    "OT": 17
+  },
+  "search_contract": {
+    "uc1_find_tables": "FTS/BM25 + tier/域 过滤（默认排除 C）",
+    "uc2_columns_of / tables_with_column": "IS_COLUMN_OF 正反查",
+    "uc3_relations_of": "1 跳 RELATES_TO + 四要素",
+    "table_level_lineage_traverse": "BFS ≤3 跳，confidence>=0.45 剪枝，仅 A 级",
+    "confidence_default_min": 0.45,
+    "max_hops_default": 3
+  },
+  "assertions": {
+    "all_pass": true,
+    "passed": 40,
+    "failed": 0,
+    "checks": [
+      {
+        "name": "ddl_table_total",
+        "target": 1322,
+        "actual": 1322,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "explicit_fk(FOREIGN KEY)",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "全库 0 外键"
+      },
+      {
+        "name": "explicit_fk(ADD CONSTRAINT)",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "pk_declared_tables",
+        "target": 1311,
+        "actual": 1311,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "no_pk_tables",
+        "target": 11,
+        "actual": 11,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "A_level",
+        "target": 349,
+        "actual": 349,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "A.jf",
+        "target": 332,
+        "actual": 332,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "A.OT",
+        "target": 17,
+        "actual": 17,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "B_level",
+        "target": 853,
+        "actual": 853,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "B.lcap",
+        "target": 450,
+        "actual": 450,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "B.quartz",
+        "target": 275,
+        "actual": 275,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "B.activiti",
+        "target": 128,
+        "actual": 128,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "C_level",
+        "target": 120,
+        "actual": 120,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "C.bak",
+        "target": 117,
+        "actual": 117,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "C.test",
+        "target": 3,
+        "actual": 3,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "registered_total",
+        "target": 1322,
+        "actual": 1322,
+        "ok": true,
+        "note": "A+B+C=349+853+120=1322"
+      },
+      {
+        "name": "traversable_A(图内)",
+        "target": 349,
+        "actual": 349,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "domain_declared_eq_enumerated(D01..D18+OT)",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "逐域=00 声明"
+      },
+      {
+        "name": "issue_total",
+        "target": 27,
+        "actual": 27,
+        "ok": true,
+        "note": "05 实测（口径差 C-δ：非 30）"
+      },
+      {
+        "name": "issue_nodes(图内)",
+        "target": 27,
+        "actual": 27,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "rel_01_total(口径ξ全量)",
+        "target": 456,
+        "actual": 456,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "rel_01_distinct_shapes",
+        "target": 12,
+        "actual": 12,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "rel_01_malformed",
+        "target": 13,
+        "actual": 13,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "rel_01_edges_after_external(≤全量)",
+        "target": "<= 456",
+        "actual": 454,
+        "ok": true,
+        "note": "外部引用剔除后的建边数 ≤ 456（census §子口径）"
+      },
+      {
+        "name": "rel_05_total",
+        "target": 33,
+        "actual": 33,
+        "ok": true,
+        "note": "全 ||..o{"
+      },
+      {
+        "name": "field_header_variants",
+        "target": 11,
+        "actual": 11,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "field_header_rows",
+        "target": 292,
+        "actual": 292,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "nonfield_header_variants",
+        "target": 8,
+        "actual": 8,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "nonfield_header_rows",
+        "target": 17,
+        "actual": 17,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "total_header_rows",
+        "target": 309,
+        "actual": 309,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "unmapped_headers",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "audit_merged_expansion_in_DDL",
+        "target": 95,
+        "actual": 95,
+        "ok": true,
+        "note": "95/95 表审计四件套展开命中 DDL"
+      },
+      {
+        "name": "column_count_readback_vs_DDL(A级)",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "图内 Column 节点数 == DDL column_count（逐表回读）"
+      },
+      {
+        "name": "header_doc_name_mismatch(信号)",
+        "target": "info",
+        "actual": 41,
+        "ok": true,
+        "note": "文档↔DDL 命名差 41 / shorthand 3 / shared_prefix 4；matched 3525。结构事实以 DDL 为准（Column 节点直取 DDL）"
+      },
+      {
+        "name": "rel_dangling(structural)",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "a_tables_without_domain",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "rel_pending_confirmation([待确认])",
+        "target": "info",
+        "actual": 4,
+        "ok": true,
+        "note": "RELATES_TO 端点非 DDL 表（未臆建造点，登记 [待确认]；schema 断言豁免此类）"
+      },
+      {
+        "name": "derived_explicit_edges(is_inferred=false)",
+        "target": 5,
+        "actual": 5,
+        "ok": true,
+        "note": "04 §3.1(2)+§二(3)"
+      },
+      {
+        "name": "derived_naming_edges_built(is_inferred=true)",
+        "target": 106,
+        "actual": 106,
+        "ok": true,
+        "note": "命名派生分类 115，有效建边 106，悬挂 9（源表不可解析→登记不造边，schema §2.2）"
+      },
+      {
+        "name": "derived_copy1_edges",
+        "target": 2,
+        "actual": 2,
+        "ok": true,
+        "note": "A 级保留副本 copy1→主表（04 §一-4/§六）"
+      }
+    ]
+  },
+  "honest_unfinished": [
+    "Concept 节点（M4 语义种子）本期未建；REALIZED_BY 无。",
+    "字段级 REFERENCES 血缘（M2）本期未建，仅表级 RELATES_TO。",
+    "B 级结构族代表展开（每族 1 代表建字段）延后 M3；本期 B 仅登记+族归约，不建字段/不遍历（遵循任务约束）。",
+    "9 张 C 级源表归属 [待确认]（remark_information/trace_quota/reconciliation 等）→ DERIVED_FROM 悬挂队列，未造边。",
+    "64 张无前缀 C 表源经 add_jf_prefix 推断（04 §3.3 支持），超出 §2.2 字面 strip 口径，已在 derived_parser 顶部诚实标注。",
+    "4 条 RELATES_TO 端点非 DDL 表（jf_product_color/jf_strategic_agreement/P_act_ru_task）→ pending_confirmation [待确认]，未臆建造点。",
+    "文档↔DDL 列名残差 name_mismatch（见 header_normalization.crosscheck）为文档口径发现，DDL 为结构事实仲裁。",
+    "graphrag/out/meta 受 .gitignore:18 'out/' 忽略；同时镜像到可提交的 graphrag/data/meta。"
+  ]
+}
