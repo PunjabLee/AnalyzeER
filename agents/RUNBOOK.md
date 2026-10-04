@@ -28,8 +28,8 @@
 | T-00 | 前置编排：任务分解与本台账 | rag-orchestrator | **完成（本次提交）** | 本文件 |
 | M0 | 范围与 Schema 契约定稿 | rag-schema-architect | ✅ **已过门并提交** | `reports/eval-M0.md`（PASS，`a917ef8`）+ `reports/audit-M0.md`（无 P0）+ 交付 `7074698` |
 | M1 | L0 图装载 + L1 确定性检索 | rag-knowledge-loader | ✅ **已过门并提交** | `reports/eval-M1.md`（PASS，`888e7c6`）+ `reports/audit-M1.md`（无 P0）+ 交付＝本次收尾提交 |
-| M2 | 字段级·引用/结构级血缘 | rag-lineage-builder | 🟡 **就绪·待委派**（上游 M1 已过门） | — |
-| M3 | L2 社区/全局分析层 | rag-community-analyst | 未开始 | — |
+| M2 | 字段级·引用/结构级血缘 | rag-lineage-builder | ✅ **已过门并提交** | `reports/eval-M2.md`（PASS，`625e6a3`）+ `reports/audit-M2.md`（无 P0/P1，6 项 P2）+ 交付＝本次收尾提交 |
+| M3 | L2 社区/全局分析层 | rag-community-analyst | 🟡 **就绪·待委派**（上游 M2 已过门） | — |
 | M4 | 结构语义层 + 可选 NL 前端 | rag-semantic-nl-frontend | 未开始 | — |
 | G·A | 横切门禁 + 范围审计 | rag-eval-gate / rag-scope-auditor | 就绪（随里程碑触发） | `graphrag/reports/` |
 
@@ -100,7 +100,7 @@
 - **目标与范围**：在 M1 图上由 DDL `_id`/`_code`、`INDEX`/`UNIQUE` 佐证、`COMMENT` 明示生成 `REFERENCES` 列→列边 + 反向影响分析 + 待确认队列。**变换/ETL 数据流级血缘：超本期范围**（§2.3 / R-9）。锚点：§2.3、§3.2、§4.1、§5.1–§5.2、§6(UC4/UC5)、§8.1(M2)。
 - **上游依赖**：M1 过门（Table/Column/RELATES_TO 已在图内）+ M0 `evidence-confidence-map.md`。
 - **输入资产**：`test_erp.sql`（列/索引/注释结构事实）、`er-model/01-ER图/*`、`er-model/03-逻辑数据模型/*`、`er-model/05`（A-3/B-4 高危项）、M1 `out/meta/`。
-- **产出物路径**：`graphrag/lineage/`（引用判定与 BFS/DFS 反向可达）、`graphrag/data/references_*`、`graphrag/out/lineage/`（血缘清单 + 影响面导出）、`graphrag/data/review_queue.json`（待确认队列，本 agent 唯一持有者）。
+- **产出物路径**：`graphrag/lineage/`（引用判定与 BFS/DFS 反向可达）、`graphrag/data/meta/lineage_*`（`lineage_edges.jsonl` + `lineage_manifest.json`，与 M1 `data/meta/` 既定口径延续；P2-3 裁决＝改卡不改产物名，原 `references_*` 作废）、`graphrag/out/lineage/`（血缘清单 + 影响面导出，**本地镜像，`.gitignore:18 out/` 不入库**）、`graphrag/data/review_queue.json`（待确认队列，本 agent 唯一持有者）。
 - **验收门**：
   1. **引用边两端可解析**：每条 `REFERENCES` 的源列与目标列均存在于图中；悬挂列边 = 0（除目标 `[待确认]` 者，且须在队列内）。
   2. 逐边携带 `evidence_level` + `confidence`，默认过滤 `≥0.45`；全库 0 FK → 导出与回答文本显式声明"血缘为逆向推断，非物理外键；不含变换/ETL 级"（§2.3、C-6）。
@@ -108,7 +108,8 @@
   4. **UC4 影响 / UC5 血缘**：给定表/字段返回下游清单与正向/反向路径（以 `jf_sales_order` 为枢纽样例），深度默认 ≤3 跳 `[待确认]`，超限截断可复现（§6）；按置信度加权剪枝，避免低置信短路连边（§5.2-2）。
   5. 无路径/无节点时答案须为"文档未记载/待确认"，**拒绝臆造兜底**（§6）。
 - **回退规则**：悬挂列边或两端不可解析 → 阻断回退 M2 生成逻辑；若产物出现变换/ETL 血缘 → 判边界越位（P0），删除并标注超范围；若需真实数据流血缘 → 停止该需求，回报"须放宽输入到 BI/ETL/作业日志后重估"（§8.3-7）。
-- **状态**：🟡 **就绪·待委派** — 上游 M1 已过门（Table/Column/`RELATES_TO` 483 条在图内，`graphrag/data/meta/` 可只读消费）。开工前必读三件：① 数量取 `spec/relation-symbol-census.md` ξ=**456**，**勿回抄本台账 §A 快照**；② 黄金集 `graphrag/eval/golden/` 由 `rag-eval-gate` 先行落地以补 Top-3 命中率基线（阈值仍 `[待确认]`）；③ 提交纪律＝**逐路径 `git add`** + 先 `git check-ignore`，禁提交 `graphrag/data/l0_*`、`*.pyc`、`.tmp/`（C-10、§4）。
+- **状态**：✅ **已过门并提交** — `eval-M2.md`（PASS，`625e6a3`）+ `audit-M2.md`（**无 P0/P1 → 准予提交**，编排者代提）；交付＝`graphrag/lineage/` + `graphrag/data/meta/lineage_{edges.jsonl,manifest.json}`（**514 REFERENCES 边 / 97 待确认队列**=抽取 84+M1 承接 13）+ `graphrag/data/review_queue.json`（本次收尾提交）。默认可见 `confidence≥0.45` = **446** 边（M3 社区输入）。锚守恒复核：RELATES_TO 483 / A349 / Issue27 / ξ456 全等，M1 代码零改动。`l0_*`、`out/lineage/`、`__pycache__/*.pyc`、`.tmp/` 依 C-10 **不入库**。
+  > **P2 技术债移交（不阻断）**：P2-1 `comment_explicit` 混 DDL直证19+文档继承9（建议拆子信号）、P2-2 `_rank<CAP` 死分支、P2-4 `same_name_divergent`(9) 缺 `doc_ref`、P2-5 `build(write=True)` 测试覆写产物（取证须在跑测前）、P2-6 `Agents.md`「30 条」陈旧（05 实=27）；P2-3 命名漂移已裁决（改卡不改产物名）。
   > 边界重申：变换/ETL 数据流级血缘＝**超本期范围**（§2.3/R-9），不得以"血缘"名义扩张；待确认队列须承接 M1 移交的 4 pending + 2 external + 9 derived 悬挂。
 
 ### M3 · L2 GraphRAG 社区/全局分析层 — `rag-community-analyst`
@@ -124,7 +125,7 @@
   4. UC6 按域问答达 `spec/eval-baseline.md` 定义的黄金集基线（阈值 `[待确认]`）、可回溯。
   5. 依赖与选型：Louvain/Leiden 实现（C-2b 实测 `python-louvain` 未安装 / `networkx 3.7` 已装）须在交付中写明实际所用；GDS 类图库能力缺口标 `[待确认]`，不得预设。
 - **回退规则**：未做置信过滤即跑社区 → 判不过门重跑；涌现簇无解释 → 降级为"对照观察"而非发现物；全局摘要出现无出处实体 → 回退 §4.2 硬约束重做；社区层若把结论建立在 `dam_*`/外部平台 → P0 阻断。
-- **状态**：未开始
+- **状态**：🟡 **就绪·待委派** — 上游 M2 已过门：`load_graph_with_lineage()` 可只读消费合并图；进入社区算法的**默认可见边=446**（`confidence≥0.45`，低置信边=0 入算法）。依赖：`python-louvain` **未装** → 退化 `networkx 3.7 greedy_modularity_communities`（实际所用须写明）；涌现簇须与 `00` 手工 18 域基线 **NMI/映射对照且不覆盖权威分组**。黄金集 `eval/golden/` 仍未落地，阈值保持 `[待确认]`。
 
 ### M4 · 结构语义层 + 可选 NL 编排前端（L3）— `rag-semantic-nl-frontend`
 
@@ -185,7 +186,7 @@
 | `graphrag/spec/**` | rag-schema-architect | 全体只读（契约） | loader 自提：`docs(rag): M0 契约与映射定稿（n 份）` |
 | `graphrag/ingest/**`、`graphrag/store/**`、`graphrag/search/**` | rag-knowledge-loader | 只读 | loader 自提：`feat(rag): M1 图装载与 L1 检索（A级349，n 边）` |
 | `graphrag/data/l0_*`、`graphrag/out/meta/**` | rag-knowledge-loader | 只读 | 同上（入库策略见 C-10） |
-| `graphrag/lineage/**`、`graphrag/data/references_*`、`graphrag/data/review_queue.json`、`graphrag/out/lineage/**` | rag-lineage-builder | 只读（队列只追加，由本 agent 持有） | lineage 自提：`feat(rag): M2 字段级引用血缘（n 边，含待确认队列）` |
+| `graphrag/lineage/**`、`graphrag/data/meta/lineage_*`、`graphrag/data/review_queue.json`（`graphrag/out/lineage/**` 为本地镜像，不入库） | rag-lineage-builder | 只读（队列只追加，由本 agent 持有） | lineage 自提：`feat(rag): M2 字段级引用血缘（n 边，含待确认队列）` |
 | `graphrag/community/**`、`graphrag/out/community/**` | rag-community-analyst | 只读 | community 自提：`feat(rag): M3 社区/全局分析层（n 社区）` |
 | `graphrag/semantic/**`、`graphrag/nl/**`、`graphrag/out/semantic/**` | rag-semantic-nl-frontend | 只读 | frontend 自提：`feat(rag): M4 结构语义层与 NL 编排前端` |
 | `graphrag/eval/**`（评测 harness + `golden/` 题目） | **rag-eval-gate** | 执行专家**只读**（禁改题目与阈值，避免"考生自己出题"） | eval-gate 自提（仅其报告/harness） |
@@ -228,6 +229,7 @@
 | 2026-10-05 | **M0 过门**：`eval-M0`（PASS）+ `audit-M0`（无 P0；P1-1 census 漏 13 malformed、P1-2 行数定因非 CRLF；P2×5）；`spec/` 冻结 | `a917ef8`（报告）/ `7074698`（交付） |
 | 2026-10-05 | **M1 过门**：`eval-M1`（六门全 PASS）+ `audit-M1`（无 P0；P1-1 派生/临时产物入库风险、P2×4） | `888e7c6`（报告）/ 本次收尾（交付） |
 | 2026-10-05 | **M1 收尾（编排者单点）**：① `.gitignore` 补 `__pycache__/`、`*.pyc`、`/.tmp/`、`graphrag/data/l0_{graph.json,edges.jsonl,index.db}`（C-10 可重建产物不入库；既有项不动）；② §A 勘误 → ξ **456/12**（ξ′ 443/10、malformed 13）、03 表头 **11/292**，并移除写死 HEAD SHA；③ 代提 `reports/audit-M0.md`、`reports/audit-M1.md` 精简存档；④ §0.1 与 M0/M1/M2 卡状态更新，**M2 转「就绪·待委派」** | 本次提交 |
+| 2026-10-05 | **M2 过门+收尾（编排者单点）**：`eval-M2`（PASS，`625e6a3`）+ `audit-M2`（无 P0/P1，6 项 P2）；P2-3 命名漂移裁决＝**改卡不改产物名**（`data/references_*`→`data/meta/lineage_*`，M2 卡/§4 同步更正，`out/lineage/` 标本地镜像）；代提 `reports/audit-M2.md`；§0.1 M2→已过门并提交、M3→就绪·待委派 | 本次提交 |
 
 ---
 

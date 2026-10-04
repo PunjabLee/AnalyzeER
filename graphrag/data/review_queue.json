@@ -1,0 +1,1801 @@
+{
+  "milestone": "M2",
+  "policy": "默认隐藏：confidence<0.45 / unconfirmed 不参与召回；人工确认可上调证据级（evidence-confidence-map §2）",
+  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤）。",
+  "counts": {
+    "total": 97,
+    "by_kind": {
+      "external_reference": 21,
+      "m1_carryover_derived_dangling": 9,
+      "m1_carryover_pending_relates_to": 4,
+      "polymorphic_fk": 2,
+      "same_name_divergent": 9,
+      "same_name_or_typo_ambiguity": 1,
+      "target_unresolved": 51
+    }
+  },
+  "items": [
+    {
+      "kind": "polymorphic_fk",
+      "table": "flow_change_record",
+      "column": "related_order_id",
+      "reason": "多态外键：一列按判别列/语义指向多表，目标不定（05 A-3）。不武断指单表；候选仅为线索，留人工确认。",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `flow_change_record`",
+        "table": "flow_change_record",
+        "column": "related_order_id",
+        "quote_hash": "43954f5c506e44e0",
+        "line_hint": 8325,
+        "signal": "documented_poly"
+      },
+      "discriminant": "order_type",
+      "enum_hint": "采购单、销售单、退款单、调账单等",
+      "source": "er-model/05-跨域核心关系总览.md §三 A-3",
+      "candidates_hint": [
+        "jf_sales_order"
+      ]
+    },
+    {
+      "kind": "polymorphic_fk",
+      "table": "jf_trial_cut_customer_mapping",
+      "column": "other_id",
+      "reason": "多态外键：一列按判别列/语义指向多表，目标不定（05 A-3）。不武断指单表；候选仅为线索，留人工确认。",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_trial_cut_customer_mapping`",
+        "table": "jf_trial_cut_customer_mapping",
+        "column": "other_id",
+        "quote_hash": "d806ce96ab2ea494",
+        "line_hint": 17479,
+        "signal": "documented_poly"
+      },
+      "discriminant": null,
+      "enum_hint": "客户等级id/指定客户id（一列两指向；05 A-3 权益 other_id 同款）",
+      "source": "er-model/05-跨域核心关系总览.md §三 A-3",
+      "candidates_hint": [
+        "jf_customer",
+        "jf_customer_level"
+      ]
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_brand",
+      "column": "crm_id",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_brand`",
+        "table": "jf_brand",
+        "column": "crm_id",
+        "quote_hash": "18876d567cb79518",
+        "line_hint": 8720,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_contract_postpone",
+      "column": "oa_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_contract_postpone`",
+        "table": "jf_contract_postpone",
+        "column": "oa_code",
+        "quote_hash": "5e30826b78b71f09",
+        "line_hint": 9689,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_contract_strategic_agreement",
+      "column": "request_id",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_contract_strategic_agreement`",
+        "table": "jf_contract_strategic_agreement",
+        "column": "request_id",
+        "quote_hash": "2274f99cfdbb9b86",
+        "line_hint": 9944,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer",
+      "column": "crm_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_customer`",
+        "table": "jf_customer",
+        "column": "crm_code",
+        "quote_hash": "97bc6f87f1a50483",
+        "line_hint": 10345,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer",
+      "column": "crm_id",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_customer`",
+        "table": "jf_customer",
+        "column": "crm_id",
+        "quote_hash": "77513432449182b9",
+        "line_hint": 10413,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer_complaints_bak",
+      "column": "crm_complaint_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_customer_complaints_bak`",
+        "table": "jf_customer_complaints_bak",
+        "column": "crm_complaint_code",
+        "quote_hash": "166c03047f57f277",
+        "line_hint": 10536,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer_equity_apply",
+      "column": "crm_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_customer_equity_apply`",
+        "table": "jf_customer_equity_apply",
+        "column": "crm_code",
+        "quote_hash": "2502d1a6a08efa15",
+        "line_hint": 10640,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer_merge_discounts_record",
+      "column": "relate_oa_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_customer_merge_discounts_record`",
+        "table": "jf_customer_merge_discounts_record",
+        "column": "relate_oa_code",
+        "quote_hash": "a888fe1b10b67815",
+        "line_hint": 10823,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_invoice_application",
+      "column": "oa_approval_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_invoice_application`",
+        "table": "jf_invoice_application",
+        "column": "oa_approval_code",
+        "quote_hash": "dd7d0530e1c583cb",
+        "line_hint": 12605,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_quality_compensation",
+      "column": "crm_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_quality_compensation`",
+        "table": "jf_quality_compensation",
+        "column": "crm_code",
+        "quote_hash": "cf02271525d07d17",
+        "line_hint": 13967,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_quality_compensation",
+      "column": "crm_complaint_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_quality_compensation`",
+        "table": "jf_quality_compensation",
+        "column": "crm_complaint_code",
+        "quote_hash": "6326db6f2b6f112d",
+        "line_hint": 13978,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_quality_compensation",
+      "column": "crm_complaint_id",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_quality_compensation`",
+        "table": "jf_quality_compensation",
+        "column": "crm_complaint_id",
+        "quote_hash": "2db2721575841f29",
+        "line_hint": 13979,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_quality_compensation",
+      "column": "oa_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_quality_compensation`",
+        "table": "jf_quality_compensation",
+        "column": "oa_code",
+        "quote_hash": "42abf082f27c87ec",
+        "line_hint": 13974,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_return_deduction_fee",
+      "column": "oa_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_return_deduction_fee`",
+        "table": "jf_return_deduction_fee",
+        "column": "oa_code",
+        "quote_hash": "b55ed32e23e326e5",
+        "line_hint": 15184,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_sales_order_wide",
+      "column": "relate_oa_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_order_wide`",
+        "table": "jf_sales_order_wide",
+        "column": "relate_oa_code",
+        "quote_hash": "694a878ae6abb1bb",
+        "line_hint": 16144,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_sales_return_oa",
+      "column": "oa_flow_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return_oa`",
+        "table": "jf_sales_return_oa",
+        "column": "oa_flow_code",
+        "quote_hash": "10686c2adbd48c7c",
+        "line_hint": 16314,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_sales_return_request_oa",
+      "column": "oa_process_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return_request_oa`",
+        "table": "jf_sales_return_request_oa",
+        "column": "oa_process_code",
+        "quote_hash": "da1dbe83ba247ce4",
+        "line_hint": 16377,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_sales_stock_oa_flow",
+      "column": "oa_flow_code",
+      "reason": "COMMENT/列名指向外部系统（crm/OA 等），不建本库 REFERENCES 边（schema §2.1；00 复核批①）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_stock_oa_flow`",
+        "table": "jf_sales_stock_oa_flow",
+        "column": "oa_flow_code",
+        "quote_hash": "10686c2adbd48c7c",
+        "line_hint": 16404,
+        "signal": "comment_external"
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_customer_credit_info",
+      "column": "erp_customer_id",
+      "reason": "er-model 关系线标注外部用户/外部系统 → 不建本库边",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D04-应收收款结算域.md",
+        "section": null,
+        "table": "jf_customer",
+        "column": "erp_customer_id",
+        "quote_hash": "574011e204f5ea16",
+        "line_hint": 374,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_customer",
+          "table:jf_customer_credit_info"
+        ]
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_mail",
+      "column": "user_id",
+      "reason": "er-model 关系线标注外部用户/外部系统 → 不建本库边",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D16-系统与协作配置域.md",
+        "section": "三、协作消息与系统配置 ER 图",
+        "table": "jf_mail",
+        "column": "user_id",
+        "quote_hash": "9b82cb42bbe62cbf",
+        "line_hint": 35,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_mail",
+          "table:jf_mail"
+        ]
+      }
+    },
+    {
+      "kind": "external_reference",
+      "table": "jf_message",
+      "column": "send_user_id",
+      "reason": "er-model 关系线标注外部用户/外部系统 → 不建本库边",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D16-系统与协作配置域.md",
+        "section": "三、协作消息与系统配置 ER 图",
+        "table": "jf_message",
+        "column": "send_user_id",
+        "quote_hash": "37e361e7cc5d934d",
+        "line_hint": 36,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_message",
+          "table:jf_message"
+        ]
+      }
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_business_inventory",
+      "column": "color_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_business_inventory`",
+        "table": "jf_business_inventory",
+        "column": "color_code",
+        "quote_hash": "c1f110b2ba0e0aac",
+        "line_hint": 8738,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "色号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_business_inventory_record",
+      "column": "cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_business_inventory_record`",
+        "table": "jf_business_inventory_record",
+        "column": "cus_order_code",
+        "quote_hash": "68dca24546b1c8d6",
+        "line_hint": 8862,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_business_inventory_transfer",
+      "column": "enter_trader_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_business_inventory_transfer`",
+        "table": "jf_business_inventory_transfer",
+        "column": "enter_trader_id",
+        "quote_hash": "b3a72795e48802ee",
+        "line_hint": 8895,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "调入贸易商ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_account",
+      "column": "pay_form_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_account`",
+        "table": "jf_collection_account",
+        "column": "pay_form_id",
+        "quote_hash": "bbe44a74f8cca4b8",
+        "line_hint": 9176,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "支付方式（1：对公；2：动态码）"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_bill",
+      "column": "income_child_bill_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_bill`",
+        "table": "jf_collection_bill",
+        "column": "income_child_bill_code",
+        "quote_hash": "9c45687f5f4591e8",
+        "line_hint": 9231,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "进账子单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_notice",
+      "column": "contacts_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_notice`",
+        "table": "jf_collection_notice",
+        "column": "contacts_id",
+        "quote_hash": "48ff9c86f9026165",
+        "line_hint": 9269,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "联系人id"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_notice_link",
+      "column": "income_bill_child_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_notice_link`",
+        "table": "jf_collection_notice_link",
+        "column": "income_bill_child_code",
+        "quote_hash": "e2859cb4b3be08d8",
+        "line_hint": 9346,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "进账子单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_notice_link",
+      "column": "payment_link_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_notice_link`",
+        "table": "jf_collection_notice_link",
+        "column": "payment_link_code",
+        "quote_hash": "592c954f2351f285",
+        "line_hint": 9338,
+        "signal": "index_without_target"
+      },
+      "key_role": "UK",
+      "indexed": false,
+      "comment": "收款链接编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_collection_notice_link",
+      "column": "write_off_bill_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_collection_notice_link`",
+        "table": "jf_collection_notice_link",
+        "column": "write_off_bill_code",
+        "quote_hash": "71b24ca562f9b215",
+        "line_hint": 9347,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "应收认领单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_color_dyeing_task",
+      "column": "dyeing_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_color_dyeing_task`",
+        "table": "jf_color_dyeing_task",
+        "column": "dyeing_code",
+        "quote_hash": "bac2d492d96be310",
+        "line_hint": 9421,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "打色单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_color_dyeing_task",
+      "column": "ld_color_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_color_dyeing_task`",
+        "table": "jf_color_dyeing_task",
+        "column": "ld_color_code",
+        "quote_hash": "f1d07c888cd0c0cc",
+        "line_hint": 9416,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "打办编号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_consignment_inventory_record",
+      "column": "cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_consignment_inventory_record`",
+        "table": "jf_consignment_inventory_record",
+        "column": "cus_order_code",
+        "quote_hash": "68dca24546b1c8d6",
+        "line_hint": 9488,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_coupon_customer_record",
+      "column": "related_business_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_coupon_customer_record`",
+        "table": "jf_coupon_customer_record",
+        "column": "related_business_code",
+        "quote_hash": "3d1e8a5030f1720d",
+        "line_hint": 10197,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "关联业务单号（销售单号）"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_coupon_use_record",
+      "column": "delivery_order_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_coupon_use_record`",
+        "table": "jf_coupon_use_record",
+        "column": "delivery_order_id",
+        "quote_hash": "6e6bb003fc9ebe52",
+        "line_hint": 10281,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "出货单ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_dye_inventory",
+      "column": "color_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_dye_inventory`",
+        "table": "jf_dye_inventory",
+        "column": "color_code",
+        "quote_hash": "c1f110b2ba0e0aac",
+        "line_hint": 11075,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "色号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_fee_item_flow",
+      "column": "source_doc_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_fee_item_flow`",
+        "table": "jf_fee_item_flow",
+        "column": "source_doc_id",
+        "quote_hash": "6156fe4473a6d034",
+        "line_hint": 11602,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "来源单据ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_goods",
+      "column": "prod_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_goods`",
+        "table": "jf_goods",
+        "column": "prod_code",
+        "quote_hash": "65d28f98195d1923",
+        "line_hint": 11690,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "开发编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_goods",
+      "column": "record_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_goods`",
+        "table": "jf_goods",
+        "column": "record_code",
+        "quote_hash": "aff24e4d559f15f4",
+        "line_hint": 11691,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "备案编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_goods_detail",
+      "column": "composition_type_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_goods_detail`",
+        "table": "jf_goods_detail",
+        "column": "composition_type_id",
+        "quote_hash": "0d41b48cbf6b98f6",
+        "line_hint": 11819,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "成分类型Id"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_invoice_fee_detail",
+      "column": "fee_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_invoice_fee_detail`",
+        "table": "jf_invoice_fee_detail",
+        "column": "fee_code",
+        "quote_hash": "8bcee3720615ef92",
+        "line_hint": 12741,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "费项单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_invoice_fee_detail",
+      "column": "source_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_invoice_fee_detail`",
+        "table": "jf_invoice_fee_detail",
+        "column": "source_order_code",
+        "quote_hash": "70135281edebe7e7",
+        "line_hint": 12742,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "来源单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_oa_workflow_config",
+      "column": "workflow_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_oa_workflow_config`",
+        "table": "jf_oa_workflow_config",
+        "column": "workflow_id",
+        "quote_hash": "8cf6698312868160",
+        "line_hint": 13082,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": ""
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_ownership_transfer_application",
+      "column": "original_cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_ownership_transfer_application`",
+        "table": "jf_ownership_transfer_application",
+        "column": "original_cus_order_code",
+        "quote_hash": "ac175871aff821b1",
+        "line_hint": 13165,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "原客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_ownership_transfer_application",
+      "column": "transfer_cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_ownership_transfer_application`",
+        "table": "jf_ownership_transfer_application",
+        "column": "transfer_cus_order_code",
+        "quote_hash": "544760afff681686",
+        "line_hint": 13170,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "转移后客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_ownership_transfer_application",
+      "column": "transfer_trader_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_ownership_transfer_application`",
+        "table": "jf_ownership_transfer_application",
+        "column": "transfer_trader_id",
+        "quote_hash": "e3ba00b2a55f613d",
+        "line_hint": 13172,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "转移后贸易商ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_ownership_transfer_application_product_bak",
+      "column": "order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_ownership_transfer_application_product_bak`",
+        "table": "jf_ownership_transfer_application_product_bak",
+        "column": "order_code",
+        "quote_hash": "6a272be9a36f82ef",
+        "line_hint": 13198,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "货权转移申请单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_product",
+      "column": "printing_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_product`",
+        "table": "jf_product",
+        "column": "printing_code",
+        "quote_hash": "72220d9e98491bc2",
+        "line_hint": 13518,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "打色编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_product_inventory",
+      "column": "color_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_product_inventory`",
+        "table": "jf_product_inventory",
+        "column": "color_code",
+        "quote_hash": "c1f110b2ba0e0aac",
+        "line_hint": 13692,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "色号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_receivable_claim",
+      "column": "contacts_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_receivable_claim`",
+        "table": "jf_receivable_claim",
+        "column": "contacts_id",
+        "quote_hash": "48ff9c86f9026165",
+        "line_hint": 14471,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "联系人id"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_receivable_claim_fee_item_audit_log",
+      "column": "source_doc_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_receivable_claim_fee_item_audit_log`",
+        "table": "jf_receivable_claim_fee_item_audit_log",
+        "column": "source_doc_id",
+        "quote_hash": "0e1d12cf9bdb590c",
+        "line_hint": 14547,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "来源单据ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_receivable_refund_order",
+      "column": "refund_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_receivable_refund_order`",
+        "table": "jf_receivable_refund_order",
+        "column": "refund_code",
+        "quote_hash": "d6be8dfdf9bbbdf5",
+        "line_hint": 14596,
+        "signal": "index_without_target"
+      },
+      "key_role": "UK",
+      "indexed": false,
+      "comment": "退款单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_receivable_write_off",
+      "column": "write_off_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_receivable_write_off`",
+        "table": "jf_receivable_write_off",
+        "column": "write_off_code",
+        "quote_hash": "8c1dac0ac7c80785",
+        "line_hint": 14665,
+        "signal": "index_without_target"
+      },
+      "key_role": "UK",
+      "indexed": false,
+      "comment": "核销单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_reservation_stock",
+      "column": "order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_reservation_stock`",
+        "table": "jf_reservation_stock",
+        "column": "order_code",
+        "quote_hash": "8561fa622e056dc6",
+        "line_hint": 14925,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_reservation_stock_record",
+      "column": "order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_reservation_stock_record`",
+        "table": "jf_reservation_stock_record",
+        "column": "order_code",
+        "quote_hash": "6b0a9fe5e2b2258b",
+        "line_hint": 15142,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订备货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_reservation_stock_record",
+      "column": "related_business_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_reservation_stock_record`",
+        "table": "jf_reservation_stock_record",
+        "column": "related_business_code",
+        "quote_hash": "c7a275a6809031f5",
+        "line_hint": 15149,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "关联业务单据号（销售单号）"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_return_product",
+      "column": "request_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_return_product`",
+        "table": "jf_return_product",
+        "column": "request_order_code",
+        "quote_hash": "e700b0429dbf836a",
+        "line_hint": 15223,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售退货申请单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_return_product",
+      "column": "return_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_return_product`",
+        "table": "jf_return_product",
+        "column": "return_order_code",
+        "quote_hash": "c8a6f1ec84def158",
+        "line_hint": 15224,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售退货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_return_repair_dye",
+      "column": "repair_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_return_repair_dye`",
+        "table": "jf_return_repair_dye",
+        "column": "repair_order_code",
+        "quote_hash": "34c715b6ea845d4c",
+        "line_hint": 15309,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "加工回修单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_role_trader_mapping",
+      "column": "role_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_role_trader_mapping`",
+        "table": "jf_role_trader_mapping",
+        "column": "role_id",
+        "quote_hash": "06caa2e81cbcced9",
+        "line_hint": 15441,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "角色id"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_order",
+      "column": "cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_order`",
+        "table": "jf_sales_order",
+        "column": "cus_order_code",
+        "quote_hash": "b1f562998560e047",
+        "line_hint": 15487,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订订单编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_order_copy1",
+      "column": "cus_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_order_copy1`",
+        "table": "jf_sales_order_copy1",
+        "column": "cus_order_code",
+        "quote_hash": "b1f562998560e047",
+        "line_hint": 15632,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "客订订单编码"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_order_receipt_detail",
+      "column": "receipt_bill_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_order_receipt_detail`",
+        "table": "jf_sales_order_receipt_detail",
+        "column": "receipt_bill_id",
+        "quote_hash": "55f0fddb0ceacc70",
+        "line_hint": 16042,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "应收收款单ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_return",
+      "column": "return_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return`",
+        "table": "jf_sales_return",
+        "column": "return_order_code",
+        "quote_hash": "b2d4143aae7ce1c1",
+        "line_hint": 16208,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售退货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_return_dye_tank",
+      "column": "sales_product_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return_dye_tank`",
+        "table": "jf_sales_return_dye_tank",
+        "column": "sales_product_id",
+        "quote_hash": "4dcf9251b5904990",
+        "line_hint": 16244,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售单关联产品ID"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_return_inbound_sn",
+      "column": "return_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return_inbound_sn`",
+        "table": "jf_sales_return_inbound_sn",
+        "column": "return_order_code",
+        "quote_hash": "b2d4143aae7ce1c1",
+        "line_hint": 16271,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售退货单号"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_sales_return_oa",
+      "column": "request_order_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_sales_return_oa`",
+        "table": "jf_sales_return_oa",
+        "column": "request_order_code",
+        "quote_hash": "e700b0429dbf836a",
+        "line_hint": 16313,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "销售退货申请单号"
+    },
+    {
+      "kind": "same_name_or_typo_ambiguity",
+      "table": "jf_trader",
+      "column": "category_id",
+      "reason": "多张真实 A 级表同基名/固化拼写并存（05 B-4 同名异指向类），无 COMMENT/文档定指向 → 不自动连通",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_trader`",
+        "table": "jf_trader",
+        "column": "category_id",
+        "quote_hash": "e9333b3a69c91382",
+        "line_hint": 17224,
+        "signal": "ambiguous_stem"
+      },
+      "candidate_tables": [
+        "jf_category",
+        "jf_catregory"
+      ],
+      "comment": "类别"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_trader_cash_quota_record",
+      "column": "related_business_code",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_trader_cash_quota_record`",
+        "table": "jf_trader_cash_quota_record",
+        "column": "related_business_code",
+        "quote_hash": "3d1e8a5030f1720d",
+        "line_hint": 17266,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "关联业务单号（销售单号）"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "jf_wms_request_record",
+      "column": "request_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_wms_request_record`",
+        "table": "jf_wms_request_record",
+        "column": "request_id",
+        "quote_hash": "fcc79aa1192864c5",
+        "line_hint": 17620,
+        "signal": "index_without_target"
+      },
+      "key_role": "UK",
+      "indexed": false,
+      "comment": "请求标识"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "node_app",
+      "column": "app_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `node_app`",
+        "table": "node_app",
+        "column": "app_id",
+        "quote_hash": "60869ee72d9cab80",
+        "line_hint": 27155,
+        "signal": "index_without_target"
+      },
+      "key_role": "UK",
+      "indexed": false,
+      "comment": "应用id"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "sales_daily_stats",
+      "column": "org_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `sales_daily_stats`",
+        "table": "sales_daily_stats",
+        "column": "org_id",
+        "quote_hash": "42a0b2bfc1253680",
+        "line_hint": 27720,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "组织 ID（集团 / 子公司 / 小组）"
+    },
+    {
+      "kind": "target_unresolved",
+      "table": "sales_monthly_stats",
+      "column": "org_id",
+      "reason": "`_id/_code` + 本表建有 INDEX/UNIQUE，但规范命名无法定位目标表（不连「最近」表）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `sales_monthly_stats`",
+        "table": "sales_monthly_stats",
+        "column": "org_id",
+        "quote_hash": "42a0b2bfc1253680",
+        "line_hint": 27742,
+        "signal": "index_without_target"
+      },
+      "key_role": "none",
+      "indexed": true,
+      "comment": "组织 ID（集团 / 子公司 / 小组）"
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "fee_category_id",
+      "tables": [
+        "jf_customer_statement.fee_category_id",
+        "jf_fee_bill.fee_category_id",
+        "jf_fee_bill_item.fee_category_id",
+        "jf_fee_item.fee_category_id",
+        "jf_receivable_write_off_fee_item_mapping.fee_category_id",
+        "jf_sales_order_detail_fee.fee_category_id",
+        "jf_tax_bill.fee_category_id"
+      ],
+      "resolved_targets": [
+        "jf_fee_category.id",
+        "jf_statement_fee_category.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "goods_code",
+      "tables": [
+        "jf_anchor_product_stock_report.goods_code",
+        "jf_mes_main_prod_inv_rpt.goods_code",
+        "jf_printing_approve.goods_code",
+        "jf_product_color_price.goods_code",
+        "jf_proofing_number.goods_code",
+        "jf_quota_goods_mapping.goods_code",
+        "jf_quota_goods_mapping_import.goods_code",
+        "jf_stock_pot_summary_info.goods_code"
+      ],
+      "resolved_targets": [
+        "jf_goods.id",
+        "jf_product.spu"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "income_bill_id",
+      "tables": [
+        "jf_income_bill_collection_detail.income_bill_id",
+        "jf_shipping_progress.income_bill_id"
+      ],
+      "resolved_targets": [
+        "jf_income_bill.id",
+        "jf_shipping_progress.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "inventory_org",
+      "tables": [
+        "jf_business_inventory.inventory_org",
+        "jf_product_inventory.inventory_org"
+      ],
+      "resolved_targets": [
+        "jf_inventory_organization.id",
+        "jf_logical_inventory.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "order_code",
+      "tables": [
+        "jf_return_frozen_sn_details.order_code",
+        "jf_stock_quality_standard.order_code"
+      ],
+      "resolved_targets": [
+        "jf_quality_standard.id",
+        "jf_sales_return.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "position_id",
+      "tables": [
+        "jf_personnel.position_id",
+        "personnel.position_id"
+      ],
+      "resolved_targets": [
+        "jf_position.id",
+        "position.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "sales_order_code",
+      "tables": [
+        "jf_fee_bill_sales_order.sales_order_code",
+        "jf_fee_item.sales_order_code",
+        "jf_quality_sales_mapping.sales_order_code",
+        "jf_rebate_detail.sales_order_code",
+        "jf_sales_order_async.sales_order_code",
+        "jf_sales_order_oa_audit.sales_order_code",
+        "jf_trial_cut_use_record.sales_order_code"
+      ],
+      "resolved_targets": [
+        "jf_sales_order.id",
+        "jf_sales_order.order_no"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "sales_order_id",
+      "tables": [
+        "jf_inventory_frozen_record.sales_order_id",
+        "jf_merge_shipment_log.sales_order_id",
+        "jf_rebate_detail.sales_order_id",
+        "jf_receivable_claim_quota_recovery_record.sales_order_id",
+        "jf_sales_order_change_record.sales_order_id",
+        "jf_sales_order_cus.sales_order_id",
+        "jf_sales_order_detail.sales_order_id",
+        "jf_sales_order_detail_fee.sales_order_id",
+        "jf_sales_order_discount.sales_order_id",
+        "jf_sales_order_picking_detail.sales_order_id",
+        "jf_sales_order_quota_usage_record.sales_order_id",
+        "jf_sales_order_receipt.sales_order_id",
+        "jf_sales_order_status_record.sales_order_id",
+        "jf_sales_return_link_original.sales_order_id",
+        "jf_sales_return_request.sales_order_id",
+        "jf_settlement_detail.sales_order_id",
+        "jf_shipping_progress.sales_order_id"
+      ],
+      "resolved_targets": [
+        "jf_merge_shipment_log.id",
+        "jf_sales_order.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "same_name_divergent",
+      "column": "shipping_mode_id",
+      "tables": [
+        "jf_delivery_address.shipping_mode_id",
+        "jf_delivery_method.shipping_mode_id"
+      ],
+      "resolved_targets": [
+        "jf_delivery_method.id",
+        "jf_shipping_mode.id"
+      ],
+      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
+      "status": "[待确认]",
+      "confidence": 0.1
+    },
+    {
+      "kind": "m1_carryover_pending_relates_to",
+      "src": "jf_product_color",
+      "dst": "jf_quota_goods_mapping",
+      "missing_endpoints": [
+        "jf_product_color"
+      ],
+      "via_column": "color_id",
+      "source_file": "er-model/01-ER图/D03-合同与信用额度域.md",
+      "reason": "表级端点非 DDL 真实表（M1 未臆建造点）；RELATES_TO 属 M1 写域，M2 不补表级边",
+      "status": "[待确认]",
+      "ddl_structure_finding": null,
+      "absorbed_by_column_edge": null
+    },
+    {
+      "kind": "m1_carryover_pending_relates_to",
+      "src": "jf_strategic_agreement",
+      "dst": "jf_invoice_application",
+      "missing_endpoints": [
+        "jf_strategic_agreement"
+      ],
+      "via_column": "buyer_agreement_id",
+      "source_file": "er-model/01-ER图/D05-发票与税务域.md",
+      "reason": "表级端点非 DDL 真实表（M1 未臆建造点）；RELATES_TO 属 M1 写域，M2 不补表级边",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "suggested_alias_table": "jf_contract_strategic_agreement",
+        "note": "唯一后缀命中（信息性，不自动连通）"
+      },
+      "absorbed_by_column_edge": null
+    },
+    {
+      "kind": "m1_carryover_pending_relates_to",
+      "src": "jf_product_color",
+      "dst": "jf_return_repair_dye",
+      "missing_endpoints": [
+        "jf_product_color"
+      ],
+      "via_column": "color_id",
+      "source_file": "er-model/01-ER图/D07-退换货与回修域.md",
+      "reason": "表级端点非 DDL 真实表（M1 未臆建造点）；RELATES_TO 属 M1 写域，M2 不补表级边",
+      "status": "[待确认]",
+      "ddl_structure_finding": null,
+      "absorbed_by_column_edge": null
+    },
+    {
+      "kind": "m1_carryover_pending_relates_to",
+      "src": "P_act_ru_task",
+      "dst": "jf_sales_order_oa_audit",
+      "missing_endpoints": [
+        "P_act_ru_task"
+      ],
+      "via_column": null,
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "reason": "表级端点非 DDL 真实表（M1 未臆建造点）；RELATES_TO 属 M1 写域，M2 不补表级边",
+      "status": "[待确认]",
+      "ddl_structure_finding": null,
+      "absorbed_by_column_edge": null
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "account_balance_use_log_bak_20251127173028",
+      "stripped_source": "account_balance_use_log",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "credit_line_use_log_bak_20251127173028",
+      "stripped_source": "credit_line_use_log",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "unique_a_hit": "jf_customer_credit_line_use_log"
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "customer_equity_item_mapping_bak_20251127173028",
+      "stripped_source": "customer_equity_item_mapping",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "customer_quota_bak_20251127173028",
+      "stripped_source": "customer_quota",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "quality_grade_bak_20251127173028",
+      "stripped_source": "quality_grade",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "unique_a_hit": "jf_customer_quality_grade"
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "quality_standard_test_project_mapping_bak_20251122145005",
+      "stripped_source": "quality_standard_test_project_mapping",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "reconciliation_bak_20251127173028",
+      "stripped_source": "reconciliation",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "unique_a_hit": "jf_customer_reconciliation"
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "remark_information_bak_20251127173028",
+      "stripped_source": "remark_information",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    },
+    {
+      "kind": "m1_carryover_derived_dangling",
+      "table": "trace_quota_bak_20251205125025",
+      "stripped_source": "trace_quota",
+      "reason": "C 级派生源表不可解析（M1 登记不造边）",
+      "status": "[待确认]",
+      "ddl_structure_finding": {
+        "candidates": null
+      },
+      "note": "命中仅作复核线索；DERIVED_FROM 属 M1 写域，M2 不补边"
+    }
+  ]
+}

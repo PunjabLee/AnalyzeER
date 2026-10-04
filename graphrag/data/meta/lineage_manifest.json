@@ -1,0 +1,252 @@
+{
+  "milestone": "M2",
+  "generator": "graphrag/lineage/build.py",
+  "contract": "graphrag/spec (M0 冻结)；M1 快照 graphrag/data/l0_graph.json 只读回载",
+  "graph_base": {
+    "mode": "loader_snapshot_reload",
+    "path": "/Users/punjab/Documents/Workspace/AnalyzeER/graphrag/data/l0_graph.json"
+  },
+  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤）。",
+  "scope": {
+    "includes": [
+      "字段级引用/结构级 REFERENCES（列→列）",
+      "反向可达影响分析（加权 BFS，≤3 跳，默认 confidence≥0.45）",
+      "多态/同名异指向/外部引用的队列化处置",
+      "M1 4 pending + 9 derived 悬挂承接（登记与定级信息）"
+    ],
+    "excludes": [
+      "变换/ETL 数据流级血缘（如 sum(order.amount)→invoice.total） —— **超本期范围**（schema §4.3/R-9），不建、不宣称",
+      "指标/KPI 语义层（R-10）",
+      "物理外键约束（全库实测 0，不存在）"
+    ]
+  },
+  "calibration": {
+    "signal_priority": [
+      "comment_explicit(DDL COMMENT 点名真实表名)",
+      "doc_relation(M1 RELATES_TO via_column，er-model 一等锚)",
+      "index_backed(_id/_code + INDEX/UNIQUE + 目标键佐证)",
+      "name_inferred(唯一规范命名，含 catregory/datat 固化拼写映射)",
+      "semantic_inferred(_code→pk_guess 列级猜测，降权)"
+    ],
+    "misspell_map": {
+      "category": "catregory",
+      "data": "datat"
+    },
+    "ambiguity_policy": "多候选/同名列异指向/COMMENT 多点名 → 一律入队列，不武断连通；后缀模糊匹配（如 cus_id→*cus）因误挂风险**不采用**"
+  },
+  "lineage_stats": {
+    "references_total": 514,
+    "by_evidence_level": {
+      "name_inferred": 302,
+      "semantic_inferred": 62,
+      "index_backed": 116,
+      "comment_explicit": 28,
+      "unconfirmed": 6
+    },
+    "by_target_col_rule": {
+      "pk": 387,
+      "pk_guess": 51,
+      "explicit_pair": 57,
+      "code_col": 19
+    },
+    "self_references": 10,
+    "default_visible_ge_0.45": 446,
+    "queue_kinds": {
+      "polymorphic_fk": 2,
+      "external_reference": 21,
+      "target_unresolved": 51,
+      "same_name_or_typo_ambiguity": 1,
+      "same_name_divergent": 9
+    },
+    "queue_total_before_carryover": 84,
+    "dropped_naming_unresolved": 271,
+    "doc_skipped": {
+      "via_col_absent_both": 13,
+      "owner_ambiguous_both_have_col": 32,
+      "endpoint_not_traversable_A": 9
+    },
+    "signal_conflicts_resolved": [
+      {
+        "table": "jf_inventory_movement_idempotent",
+        "column": "subject_id",
+        "kept": [
+          "jf_business_inventory"
+        ],
+        "not_added": "jf_consignment_record",
+        "rule": "comment>doc>name"
+      },
+      {
+        "table": "jf_inventory_movement_idempotent",
+        "column": "subject_id",
+        "kept": [
+          "jf_business_inventory"
+        ],
+        "not_added": "jf_inventory_batch_record",
+        "rule": "comment>doc>name"
+      }
+    ]
+  },
+  "carryover": {
+    "pending_total": 4,
+    "derived_total": 9
+  },
+  "uc_samples": {
+    "UC5_downstream_jf_sales_order.id": {
+      "reached_columns": 17,
+      "reached_tables": 17,
+      "edges_traversed": 17,
+      "truncated_at_budget": 0
+    },
+    "UC4_upstream_jf_sales_order.customer_id": {
+      "reached_columns": 1,
+      "edges_traversed": 1
+    },
+    "UC5_table_pivot_jf_sales_order": {
+      "seed_count": 2,
+      "reached_columns": 20,
+      "reached_tables": 20,
+      "edges_traversed": 20,
+      "truncated_at_budget": 0
+    },
+    "UC4_profile_outgoing": 7,
+    "note": "默认 min_conf=0.45 / max_hops=3；确定性可复现（同输入同输出）"
+  },
+  "anchors_conserved": {
+    "traversable_A": 349,
+    "relation_lines_xi": 456,
+    "relates_to_edges_built_m1": 483,
+    "issue_nodes": 27
+  },
+  "assertions": {
+    "all_pass": true,
+    "passed": 15,
+    "failed": 0,
+    "checks": [
+      {
+        "name": "reference_edge_dangling",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "边两端 Column 必须已在图"
+      },
+      {
+        "name": "evidence_coverage",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "有出处率必须 100%"
+      },
+      {
+        "name": "evidence_level_enum",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "confidence_cap_0.95",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "全库 0 FK，上限锁 0.95"
+      },
+      {
+        "name": "all_is_inferred",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "no_physical_fk_claim",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:RELATES_TO",
+        "target": 483,
+        "actual": 483,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:IS_COLUMN_OF",
+        "target": 6428,
+        "actual": 6428,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:DERIVED_FROM",
+        "target": 113,
+        "actual": 113,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:HAS_ISSUE",
+        "target": 11,
+        "actual": 11,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:BELONGS_TO_DOMAIN",
+        "target": 1202,
+        "actual": 1202,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:SAME_FAMILY_AS",
+        "target": 778,
+        "actual": 778,
+        "ok": true,
+        "note": ""
+      },
+      {
+        "name": "m1_edge_intact:SUPPORTED_BY",
+        "target": 483,
+        "actual": 483,
+        "ok": true,
+        "note": "M1 既有边不被改写（SUPPORTED_BY 仅增不减）"
+      },
+      {
+        "name": "m1_traversable_A",
+        "target": 349,
+        "actual": 349,
+        "ok": true,
+        "note": "ξ/A349/Issue27 口径守恒（以实物为准）"
+      },
+      {
+        "name": "m1_issue_nodes",
+        "target": 27,
+        "actual": 27,
+        "ok": true,
+        "note": ""
+      }
+    ]
+  },
+  "evidence_node_stats": {
+    "evidence_nodes_added": 99
+  },
+  "outputs": {
+    "committed": [
+      "graphrag/lineage/*",
+      "graphrag/data/review_queue.json",
+      "graphrag/data/meta/lineage_edges.jsonl",
+      "graphrag/data/meta/lineage_manifest.json"
+    ],
+    "local_mirror": "graphrag/out/lineage/*（.gitignore:18 'out/' 忽略，不入库）"
+  },
+  "honest_unfinished": [
+    "变换/ETL 数据流级血缘：超本期范围（M0 §4.3/R-9 既定排除），未实现。",
+    "后缀模糊命名（raw_fabric_id→jf_goods_raw_fabric 一类 55 处）无 COMMENT/文档佐证者一律不建边（防误挂），已计入 dropped_naming_unresolved / target_unresolved 队列。",
+    "M1 RELATES_TO 两端同持 via_column 的归属歧义（owner_ambiguous）跳过列边生成，相关高危已由各自由 COMMENT/命名链路独立定指向（见 B-4 留痕队列项）。",
+    "4 pending / 9 derived 悬挂的表级补边属 M1 写域，M2 仅承接登记 + DDL 结构定级信息，不代改 M1 产物。",
+    "`_code`→目标 PK 的列级猜测（pk_guess）降为 semantic_inferred，默认阈值下隐藏，待人工确认后可升级。",
+    "er-model 03 逻辑模型「关联」列的 FK[..] 线索未消费（M1 header_parser 归一即弃），后续可作为第六路佐证信号，本期未实现。"
+  ]
+}
