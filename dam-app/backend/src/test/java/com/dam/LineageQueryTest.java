@@ -44,9 +44,10 @@ class LineageQueryTest {
             assertThat(n.depth()).isZero();   // the root is always the depth-0 anchor
         });
         // a genuinely-connected hub reaches a meaningful downstream impact set — EXACT regression
-        // numbers (M-3): H2 and real MySQL 8 were measured bit-identical at the M3-2/C batches
+        // numbers (M-3, re-anchored to the INDUCED edge-set semantics of review N-6): H2 and real
+        // MySQL 8 measured bit-identical; edges = every relation with BOTH endpoints in the set.
         assertThat(v.nodeCount()).as("downstream nodes of jf_sales_order").isEqualTo(41);
-        assertThat(v.edges()).as("downstream edges of jf_sales_order").hasSize(48);
+        assertThat(v.edges()).as("downstream edges of jf_sales_order").hasSize(49);
         assertThat(v.truncated()).isFalse();
     }
 
@@ -56,7 +57,19 @@ class LineageQueryTest {
         LineageView v = lineage.trace(r.getName(), r.getId(), Direction.UPSTREAM, 10);
         assertThat(v.direction()).isEqualTo("UPSTREAM");
         assertThat(v.nodeCount()).as("upstream nodes of jf_sales_order").isEqualTo(15);
-        assertThat(v.edges()).as("upstream edges of jf_sales_order").hasSize(17);
+        assertThat(v.edges()).as("upstream edges of jf_sales_order").hasSize(22);
+    }
+
+    /** Review N-6 regression: the canonical (depth, node, edge) pick makes repeated traces byte-equal. */
+    @Test
+    void repeatedTracesAreByteIdenticalIncludingTheTreePairing() {
+        MetaAsset r = hub();
+        for (Direction d : Direction.values()) {
+            LineageView a = lineage.trace(r.getName(), r.getId(), d, 10);
+            LineageView b = lineage.trace(r.getName(), r.getId(), d, 10);
+            assertThat(b.nodes()).as("nodes stable for " + d).isEqualTo(a.nodes());
+            assertThat(b.edges()).as("edges stable for " + d).isEqualTo(a.edges());
+        }
     }
 
     @Test
@@ -73,7 +86,8 @@ class LineageQueryTest {
             }
             // distinct-node invariant: path-based cycle pruning ⇒ nodeCount == number of distinct ids
             assertThat(ids).as("nodes are distinct (cycle-safe)").hasSize(v.nodeCount());
-            // closed subgraph: every traversed edge has BOTH endpoints among the visited nodes
+            // closed subgraph: the induced edge set contains ONLY relations whose BOTH endpoints
+            // are among the visited nodes (never a dangling half-edge) — determinism by construction
             for (LineageEdge e : v.edges()) {
                 assertThat(ids).as("edge from-endpoint inside subgraph").contains(e.fromAssetId());
                 assertThat(ids).as("edge to-endpoint inside subgraph").contains(e.toAssetId());

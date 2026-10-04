@@ -160,7 +160,9 @@ class ErEvidenceIntegrityTest {
         long withToCol = all.stream()
                 .filter(r -> r.getCardinality() != null && r.getToColumn() != null).count();
         assertTrue(withToCol >= 25, "ER 的 ->/=/↔ 目标列应被大量补全，实得=" + withToCol);
-        // ②基线 413 + ER 新增真实边（无 alias 兑底救回后新增变多）；下限防回归。
-        assertTrue(relationRepo.count() >= 425, "总边=②413 + ER 新增，应 >= 425，实得=" + relationRepo.count());
+        // [P1/N-8] 精确回归（原仅 >=425 下限）：退出标准数字入测试层——②413 + ①74 = 487。
+        assertTrue(relationRepo.count() == 487, "总边恰为 ②413+①74=487，实得=" + relationRepo.count());
+        long erEdges = all.stream().filter(r -> "ER证据摘录".equals(r.getOrigin())).count();
+        assertTrue(erEdges == 74, "① ER 新边恰为 74，实得=" + erEdges);
     }
 }

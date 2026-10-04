@@ -64,6 +64,11 @@ public class LineageService {
     }
 
     private static final int HARD_MAX_DEPTH = 10;
+    /** wall-clock budget for the recursive CTE (review N-10: dense subgraphs can explode paths). */
+    private static final int STATEMENT_TIMEOUT_MS = 15_000;
+    /** rows-per-node slack for the runaway budget: multi-route convergence is path-pruned to
+     *  a small constant in this corpus (measured 73 rows / 41 nodes ≈ 1.8), 4× is generous. */
+    private static final int ROWS_PER_NODE_BUDGET = 4;
     /**
      * Per-view node ceiling — PLAN 血缘可视化的单视图渲染上限 200 节点（NFR），超出即确定性截断；
      * 可经 {@code dam.lineage.node-limit} 配置下调以便测试截断分支（M-2）。
@@ -98,22 +103,28 @@ public class LineageService {
                 "  FROM meta_relation r JOIN lin l ON " + join + " = l.node" +
                 "  WHERE " + next + " IS NOT NULL AND l.depth < :maxDepth" +
                 "    AND LOCATE(CONCAT(',', " + next + ", ','), CONCAT(',', l.path, ',')) = 0" +
-                ") SELECT node, depth, parent_node, edge_id FROM lin ORDER BY depth, node";
+                ") SELECT node, depth, parent_node, edge_id FROM lin ORDER BY depth, node, edge_id";
 
-        // deterministic order (depth asc, node asc) BEFORE the row cap: parents always arrive before
-        // their children, so a truncated run drops only the deepest tail and the kept set stays
-        // parent-closed — the same LIMIT on unordered rows would not (M-2).
+        // Determinism without window functions (review N-6/N-7) — H2 cannot combine a recursive CTE
+        // with a ROW_NUMBER derived table (probe 2026-10-04: anchor row nullifies, recursion is lost),
+        // so TOTAL ORDER in SQL (depth, node, edge_id) + "first row per node wins" in Java gives the
+        // same canonical tree: every node's row is its (min depth, min edge) arrival, parent/edge
+        // pairing comes from that one row. Depth-ordered rows mean parents always precede children:
+        // once the NODE cap is hit only new (deeper) nodes are refused, so the kept set stays
+        // parent-closed (the cap counts NODES, not rows — the row budget is runaway protection only).
+        int rowBudget = (nodeLimit + 1) * ROWS_PER_NODE_BUDGET;
         List<?> rows = em.createNativeQuery(sql)
+                .setHint("jakarta.persistence.query.timeout", STATEMENT_TIMEOUT_MS)
                 .setParameter("root", rootId)
                 .setParameter("maxDepth", depth)
-                .setMaxResults(nodeLimit + 1)
+                .setMaxResults(rowBudget + 1)
                 .getResultList();
 
-        boolean truncated = rows.size() > nodeLimit;
+        boolean budgetHit = rows.size() > rowBudget;
         Map<Long, Integer> minDepth = new LinkedHashMap<>();
         Map<Long, Long> parentOf = new HashMap<>();    // shortest-path tree parent (impact-list paths)
-        Map<Long, Long> viaEdgeOf = new HashMap<>();   // edge id that first reached the node
-        Set<Long> edgeIds = new LinkedHashSet<>();
+        Map<Long, Long> viaEdgeOf = new HashMap<>();   // canonical edge that reached the node
+        boolean capHit = false;
         for (Object row : rows) {
             Object[] r = (Object[]) row;
             long node = ((Number) r[0]).longValue();
@@ -126,28 +137,21 @@ public class LineageService {
             if (d > 0) {
                 parent = toLong(r[2]);
                 edge = toLong(r[3]);
-                if (edge != null) {
-                    edgeIds.add(edge);
-                }
             }
-            Integer best = minDepth.get(node);
-            if (best == null || d < best) {            // shortest path wins across multiple routes
-                minDepth.put(node, d);
-                if (d > 0) {                           // the depth-0 anchor carries :root as its own parent
-                    parentOf.put(node, parent);
-                    viaEdgeOf.put(node, edge);
-                }
+            if (minDepth.containsKey(node)) {
+                continue;                              // total order: first row IS the canonical row
+            }
+            if (minDepth.size() >= nodeLimit) {
+                capHit = true;                         // node ceiling reached: refuse NEW nodes only
+                continue;
+            }
+            minDepth.put(node, d);
+            if (d > 0) {                               // the depth-0 anchor carries :root as its own parent
+                parentOf.put(node, parent);
+                viaEdgeOf.put(node, edge);
             }
         }
-        // hard node cap: rows arrived depth-ordered, so evicting the tail keeps a parent-closed prefix
-        if (minDepth.size() > nodeLimit) {
-            List<Long> evicted = new ArrayList<>(minDepth.keySet()).subList(nodeLimit, minDepth.size());
-            evicted.forEach(node -> {
-                minDepth.remove(node);
-                parentOf.remove(node);
-                viaEdgeOf.remove(node);
-            });
-        }
+        boolean truncated = capHit || budgetHit;
 
         Map<Long, MetaAsset> byId = new HashMap<>();
         assetRepo.findAllById(minDepth.keySet()).forEach(a -> byId.put(a.getId(), a));
@@ -168,12 +172,18 @@ public class LineageService {
         List<LineageEdge> edges = new ArrayList<>();
         Set<Long> finalIds = new HashSet<>();
         nodes.forEach(n -> finalIds.add(n.assetId()));
-        for (MetaRelation r : relRepo.findAllById(edgeIds)) {
-            // closed-subgraph invariant survives truncation AND catalog evaporation: keep an edge
-            // only when BOTH endpoints are in the returned node set (never a dangling half-edge).
-            if (!finalIds.contains(r.getFromAssetId()) || !finalIds.contains(r.getToAssetId())) {
-                continue;
+        // Edge semantics (review N-6 follow-up): the INDUCED edge set — every stored relation whose
+        // BOTH endpoints sit in the returned node set. Deterministic (a "traversed-edges" set depends
+        // on arrival order and silently drops path-pruning back edges, e.g. 48 vs 49 on the hub),
+        // and the closed-subgraph invariant holds by construction, surviving truncation AND
+        // catalog evaporation — a half-edge is never emitted.
+        List<MetaRelation> induced = new ArrayList<>();
+        for (MetaRelation r : relRepo.findAll(org.springframework.data.domain.Sort.by("id"))) {
+            if (finalIds.contains(r.getFromAssetId()) && finalIds.contains(r.getToAssetId())) {
+                induced.add(r);
             }
+        }
+        for (MetaRelation r : induced) {
             edges.add(new LineageEdge(r.getId(), r.getFromAssetId(), nameOf(byId, r.getFromAssetId()),
                     r.getFromColumn(), r.getToAssetId(), nameOf(byId, r.getToAssetId()),
                     r.getCardinality(), r.getEvidenceLevel(), r.getConfidence(), r.getOrigin()));

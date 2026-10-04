@@ -38,6 +38,8 @@ class ImpactExportTest {
         assertThat(r.rootAsset()).isEqualTo("jf_sales_order");
         assertThat(r.impactedCount()).isEqualTo(r.rows().size());
         assertThat(r.rows()).isNotEmpty();
+        // exit-standard number as a TEST (review N-8): depth6 covers all 41 hub nodes ⇒ 40 rows
+        assertThat(r.impactedCount()).as("impact rows = downstream nodes 41 − root").isEqualTo(40);
         // the root itself is never an "impacted" row; the proven depth-1 impact is
         assertThat(r.rows()).noneMatch(row -> row.affectedAsset().equalsIgnoreCase("jf_sales_order"));
         assertThat(r.rows()).anySatisfy(row -> {
@@ -45,7 +47,7 @@ class ImpactExportTest {
             assertThat(row.depth()).isEqualTo(1);
             assertThat(row.viaParent()).isEqualTo("jf_sales_order");
             assertThat(row.viaColumn()).isNotBlank();          // every propagation is an FK-backed edge
-            assertThat(row.origin()).isIn("逻辑FK列", "ER");
+            assertThat(row.origin()).isIn("逻辑FK列", "ER证据摘录");   // real origin values, no shorthand (N-12)
         });
         // every row: depth ≥ 1, path anchored at the root, affected asset real
         r.rows().forEach(row -> {

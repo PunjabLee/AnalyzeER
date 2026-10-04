@@ -1,7 +1,7 @@
 package com.dam;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
@@ -21,12 +21,12 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
  *
  * <p><b>Manual only</b> — requires the local {@code dam-mysql} container
  * ({@code docker start dam-mysql}; user dam/dam_pwd, schema dam_meta already ingested):
- * remove {@code @Disabled} and run {@code mvn test -Dtest=MysqlDialectProbeTest} when touching
+ * remove the gate and run {@code mvn test -Dtest=MysqlDialectProbeTest -Ddam.probe.mysql=true} when touching
  * the CTE SQL or upgrading MySQL.
  */
 @SpringBootTest
 @ActiveProfiles("mysql")
-@Disabled("需本地 dam-mysql 容器 + 已摄取数据；改动血缘 CTE 或升级 MySQL 时手工复跑（M-3 固化）")
+@EnabledIfSystemProperty(named = "dam.probe.mysql", matches = "true")   // 发版前手动门（N-10）：-Ddam.probe.mysql=true 即入库跑
 class MysqlDialectProbeTest {
 
     @Autowired
@@ -59,9 +59,10 @@ class MysqlDialectProbeTest {
                 "  FROM meta_relation r JOIN lin l ON r.to_asset_id = l.node" +
                 "  WHERE r.from_asset_id IS NOT NULL AND l.depth < 3" +
                 "    AND LOCATE(CONCAT(',', r.from_asset_id, ','), CONCAT(',', l.path, ',')) = 0" +
-                ") SELECT node, depth, parent_node, edge_id FROM lin ORDER BY depth, node",
+                ") SELECT node, depth, parent_node, edge_id FROM lin ORDER BY depth, node, edge_id",
                 root, root, root, root);
         assertThat(rows).as("anchored CTE executes on MySQL 8 against live meta_relation").isNotEmpty();
-        assertThat(rows.get(0).get("depth")).isEqualTo(0);           // ORDER BY depth is deterministic
+        assertThat(((Number) rows.get(0).get("depth")).longValue())
+                .as("ORDER BY depth is deterministic").isEqualTo(0L);   // dialect-safe numeric compare
     }
 }

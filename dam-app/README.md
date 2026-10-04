@@ -164,6 +164,14 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - **新门测试**：`DdlReingestStabilityTest` 4 例（重灌 id 全钉住/纯 no-op、dryRun 零写入、治理字段存活、source 指针静默刷新）；`ReferentialIntegrityTest` 2 例（**五表全量引用零悬空不变式**：rel×2/column/ldm/pdm/term_ref×2；及 N-1 字面回归：先建 pdm/ldm/术语绑定→重灌→仍指同一行）；`RelationReingestTest` +2 例（已确认 stale 行隔离、多态兄弟 id→target 映射跨重灌逐项相等）。
 - **真实 MySQL 8 冒烟（就地升级，无 drop）**：dryRun 预览全 unchanged且零落盘→真跑 `/ddl` 报 1322/16591 全 unchanged、id 区间 2645–3966 分毫不动、审计入库；置判决 id=1000=已确认 → `/ddl`+`/relations` 链后存活（旧代码必丢）；`/relations` 零 churn（created=0/reused=413/removed=0/kept=0）；`POST /api/model/rebuild` 修复存量断链——**pdm/ldm/term_ref/column/rel 悬空全部 66/66→0**；基线 ②413/①74/总487、血缘 down 41/48·up 15/17 零侵蚀，impact depth6 经节点数 41−1 自洽复核。
 
+### P1 血缘确定性与预算批（二轮评审 N-6/N-7/N-8/N-10/N-12，`mvn test` 101/101）
+
+- **N-6/N-7 遍历确定性（`LineageService` 重写核心段）**：SQL 外层全序 `ORDER BY depth, node, edge_id` + Java“每节点首行即 canonical”（天然 min depth + min edge 的唯一父/边配对），取代此前依赖行到达顺序的隐式规范。**未走 ROW_NUMBER 窗口方案**——临时探针实证 H2 缺陷：递归 CTE 叠加窗口函数派生表会使锚行 node 变 null 且递归丢失（H2 侧不可用，跨方言替代即上方案）。节点上限语义改为**计数节点而非行**：cap 命中只拒绝新（更深）节点，深度序保证保留集父闭；新增行预算 `(nodeLimit+1)×4` 仅作 runaway 保护、`jakarta.persistence.query.timeout` 15s 硬预算（N-10 稠密子图防路径爆炸）。
+- **输出边集口径变更——INDUCED 诱导子图**：边集从“遍历到达行收集”（受路径剪枝与到达顺序影响，会静默丢剪枝回边）改为**双端均在返回节点集的全部存量关系**（按 id 序输出）：确定性 by construction，闭合子图不变式在截断与目录蒸发下都成立。枢纽基线随之 **down 41 节点/48→49 边、up 15/17→22 边**（节点数不变；上文历史段所记 48/17 为当时 traversed 口径，非失实）。`LineageQueryTest` 新增双向两次 trace **逐字节一致**断言例。
+- **N-8 精确断言**：`ImpactExportTest` 钉死 impactedCount==40，`ErEvidenceIntegrityTest` 由 `>=425` 改总边 **==487** 且①边 **==74**；**N-12** origin 枚举断言修正为真实值（`逻辑FK列`/`ER证据摘录`）。
+- **N-10 探针门控真跑**：`MysqlDialectProbeTest` 由 `@Disabled` 改 `@EnabledIfSystemProperty(named="dam.probe.mysql")`——按需真实 MySQL 8 执行（`mvn test -Dtest=MysqlDialectProbeTest -Ddam.probe.mysql=true`，实库 3/3 绿），不再是从不运行的死文档；默认 `mvn test` 仍跳过（Skipped=3）。
+- **真实 MySQL 8 冒烟（HTTP 层）**：新基线 down **41/49**、up **15/22**、impact **40** 全部达成；同一查询两次输出逐字节 **SAME**（确定性实证）。
+
 ## 关键设计口径（对齐评审结论）
 
 - **结构 ← DDL，关系 ← ER 证据**：本库 0 外键，`DdlParser` 只摄取表/列结构；
