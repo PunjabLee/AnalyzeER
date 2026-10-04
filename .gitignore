@@ -23,3 +23,5 @@ Thumbs.db
 .DS_Store
 _cm.txt
 /.qoder/
+/dam-app/frontend/dist/
+/dam-app/frontend/node_modules/
