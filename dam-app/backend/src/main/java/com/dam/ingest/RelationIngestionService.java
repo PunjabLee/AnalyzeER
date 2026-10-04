@@ -1,5 +1,7 @@
 package com.dam.ingest;
 
+import com.dam.domain.Candidates;
+import com.dam.domain.Candidates.Candidate;
 import com.dam.domain.MetaAsset;
 import com.dam.domain.MetaRelation;
 import com.dam.parser.ErModelSourceLocator;
@@ -49,8 +51,11 @@ import java.util.stream.Stream;
 public class RelationIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(RelationIngestionService.class);
+    public static final String ORIGIN_CH2 = "逻辑FK列";
     private static final Pattern CROSS_DOMAIN = Pattern.compile("跨域\\s*(D\\d{2})");
     private static final Pattern SELF_REF_TEXT = Pattern.compile("自关联|自引用");
+    /** R3 discriminator text as written in the docs, e.g. “（按 order_type）” — never inferred (R4). */
+    private static final Pattern DISCRIMINATOR = Pattern.compile("[（(]\\s*[按依]\\s*([A-Za-z_][A-Za-z0-9_]*)");
 
     private final MetaAssetRepository assetRepo;
     private final MetaRelationRepository relRepo;
@@ -90,7 +95,7 @@ public class RelationIngestionService {
         // C-2 scope guard: only 逻辑FK列 rows are upserted; ER/manual/confirmed verdicts survive.
         Map<String, List<MetaRelation>> pool = new HashMap<>();
         for (MetaRelation r : relRepo.findAll()) {
-            if ("逻辑FK列".equals(r.getOrigin())) {
+            if (ORIGIN_CH2.equals(r.getOrigin())) {
                 pool.computeIfAbsent(edgeKey(r.getFromAssetId(), r.getFromColumn(), r.getTargetRaw()),
                         k -> new ArrayList<>()).add(r);
             }
@@ -150,7 +155,7 @@ public class RelationIngestionService {
         int resolved2 = 0;
         int total2 = 0;
         for (MetaRelation r : relRepo.findAll()) {
-            if ("逻辑FK列".equals(r.getOrigin())) {
+            if (ORIGIN_CH2.equals(r.getOrigin())) {
                 total2++;
                 if (r.getToAssetId() != null) {
                     resolved2++;
@@ -205,10 +210,37 @@ public class RelationIngestionService {
         e.setEvidenceLevel(pr.evidenceLevel());
         e.setConfidence(pr.confidence());
         e.setCrossDomain(cross);
+        e.setDiscriminator(discriminatorOf(pr));
+        // rebuild OUR candidate entries; channel-1 (ER) entries on this row survive the refresh
+        e.setCandidateTargets(Candidates.replaceSource(e.getCandidateTargets(), ORIGIN_CH2,
+                ch2Candidates(pr, relPath)));
         if (e.getBasisRaw() == null || !e.getBasisRaw().contains("｜ER")) {
             e.setBasisRaw(cut(pr.getBasisRaw(), 300));   // no ER notes yet -> doc text wins
         }
         e.setSourceDoc(cut(relPath, 200));
+    }
+
+    /**
+     * R3 (C-1): a polymorphic {@code FK[A/B]} cell expands into one edge per resolvable target;
+     * each sibling is recorded structurally on the edge so the workbench sees the full candidate
+     * set without parsing prose, immune to the basis_raw 300-char cut.
+     */
+    private static List<Candidate> ch2Candidates(ParsedRelation pr, String doc) {
+        List<Candidate> fresh = new ArrayList<>();
+        if (pr.getTargets().size() > 1) {
+            for (String t : pr.getTargets()) {
+                fresh.add(new Candidate(t, ORIGIN_CH2, cut(doc, 200), "多态A/B"));
+            }
+        }
+        return fresh;
+    }
+
+    /** the discriminator column ONLY if a source document spells it out (e.g. “（按 order_type）”). */
+    private static String discriminatorOf(ParsedRelation pr) {
+        String hay = (pr.getTargetRaw() == null ? "" : pr.getTargetRaw())
+                + " " + (pr.getBasisRaw() == null ? "" : pr.getBasisRaw());
+        Matcher m = DISCRIMINATOR.matcher(hay);
+        return m.find() ? m.group(1) : null;
     }
 
     /** identity of a channel-2 edge; stable across the channel-1 overlay (S2-3 never rewrites targetRaw). */
@@ -230,10 +262,12 @@ public class RelationIngestionService {
         r.setTargetRaw(pr.getTargetRaw());
         r.setEvidenceLevel(pr.evidenceLevel());
         r.setConfidence(pr.confidence());
-        r.setOrigin("逻辑FK列");
+        r.setOrigin(ORIGIN_CH2);
         r.setInferred(true);
         r.setConfirmStatus("待确认");
         r.setCrossDomain(cross);
+        r.setDiscriminator(discriminatorOf(pr));
+        r.setCandidateTargets(Candidates.write(ch2Candidates(pr, doc)));
         r.setBasisRaw(cut(pr.getBasisRaw(), 300));
         r.setSourceDoc(cut(doc, 200));
         return r;

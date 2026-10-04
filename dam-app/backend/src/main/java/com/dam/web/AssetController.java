@@ -216,7 +216,9 @@ public class AssetController {
                 nameOf.apply(r.getFromAssetId()), r.getFromColumn(),
                 nameOf.apply(r.getToAssetId()), r.getToColumn(),
                 r.getTargetRaw(), r.getEvidenceLevel(), r.getCardinality(), r.isConflictFlag(), r.getOrigin(),
-                r.getConfidence(), r.getConfirmStatus(), r.getCrossDomain(), r.getSourceDoc());
+                r.getConfidence(), r.getConfirmStatus(), r.getCrossDomain(), r.getSourceDoc(),
+                com.dam.domain.Candidates.read(r.getCandidateTargets()),   // R3 structured (C-1)
+                r.getDiscriminator(), r.getConfirmedBy());
     }
 
     static AssetSummary toSummary(MetaAsset a) {

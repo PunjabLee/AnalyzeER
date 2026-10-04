@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 /**
@@ -83,6 +84,28 @@ public class MetaRelation {
     @Column(name = "source_doc", length = 200)
     private String sourceDoc;
 
+    /**
+     * R3 structured multi-candidate targets (PLAN §3.2) as a JSON entry list — see
+     * {@link Candidates}. Polymorphic A/B expansions and channel-1 deferred candidates
+     * (多父候选/自证否认/目标冲突) land here instead of the 300-char {@code basis_raw}
+     * so they can never be silently truncated and are enumerable by the workbench.
+     */
+    @Lob
+    @Column(name = "candidate_targets", columnDefinition = "longtext")
+    private String candidateTargets;
+
+    /**
+     * R3 discriminator column: the column whose value selects between candidates
+     * (e.g. “按 order_type”). ONLY filled when a source document states it explicitly —
+     * never inferred (R4). Null means the discriminator is still 待确认 from the docs.
+     */
+    @Column(name = "discriminator", length = 200)
+    private String discriminator;
+
+    /** who accepted/rejected this edge (M5 confirmation loop); null until a human verdict exists */
+    @Column(name = "confirmed_by", length = 64)
+    private String confirmedBy;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getFromAssetId() { return fromAssetId; }
@@ -115,4 +138,10 @@ public class MetaRelation {
     public void setBasisRaw(String basisRaw) { this.basisRaw = basisRaw; }
     public String getSourceDoc() { return sourceDoc; }
     public void setSourceDoc(String sourceDoc) { this.sourceDoc = sourceDoc; }
+    public String getCandidateTargets() { return candidateTargets; }
+    public void setCandidateTargets(String candidateTargets) { this.candidateTargets = candidateTargets; }
+    public String getDiscriminator() { return discriminator; }
+    public void setDiscriminator(String discriminator) { this.discriminator = discriminator; }
+    public String getConfirmedBy() { return confirmedBy; }
+    public void setConfirmedBy(String confirmedBy) { this.confirmedBy = confirmedBy; }
 }

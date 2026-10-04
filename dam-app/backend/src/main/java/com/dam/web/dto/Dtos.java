@@ -52,7 +52,10 @@ public final class Dtos {
             Double confidence,
             String confirmStatus,
             String crossDomain,
-            String sourceDoc) { }
+            String sourceDoc,
+            java.util.List<com.dam.domain.Candidates.Candidate> candidates, // R3 structured (C-1)
+            String discriminator,   // R3 discriminator column, only when a doc states it
+            String confirmedBy) { } // M5 verdict owner, null until confirmed
 
     public record AssetDetail(
             AssetSummary summary,

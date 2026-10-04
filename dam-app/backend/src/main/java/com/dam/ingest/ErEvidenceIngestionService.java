@@ -1,5 +1,7 @@
 package com.dam.ingest;
 
+import com.dam.domain.Candidates;
+import com.dam.domain.Candidates.Candidate;
 import com.dam.domain.MetaAsset;
 import com.dam.domain.MetaColumn;
 import com.dam.domain.MetaRelation;
@@ -334,10 +336,22 @@ public class ErEvidenceIngestionService {
     private void markConflict(MetaRelation e, MetaAsset erParent) {
         e.setConflictFlag(true);   // ②与 ER 指向不同具体目标：可过滤冲突位（S3-1）
         appendNote(e, "｜ER冲突目标:" + erParent.getName());
+        addCandidate(e, erParent, null, "目标冲突");
     }
 
     private void appendCandidate(MetaRelation e, MetaAsset erParent, String doc, String why) {
         appendNote(e, "｜ER候选:" + erParent.getName() + "(" + why + ",未消解)");
+        addCandidate(e, erParent, doc, why);
+    }
+
+    /**
+     * R3 (C-1): record the deferred ER parent STRUCTURALLY on the edge (JSON list) — the prose
+     * note above is kept for human readers but is no longer the only carrier, since basis_raw's
+     * 300-char cut could silently truncate a candidate and the workbench needs to enumerate them.
+     */
+    private void addCandidate(MetaRelation e, MetaAsset erParent, String doc, String why) {
+        e.setCandidateTargets(Candidates.upsert(e.getCandidateTargets(),
+                new Candidate(erParent.getName(), ORIGIN_ER, doc == null ? null : cut(doc, 200), why)));
     }
 
     private void appendResolved(MetaRelation e, MetaAsset erParent, String doc) {
