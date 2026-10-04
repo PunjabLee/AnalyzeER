@@ -24,8 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Runs against the H2 profile whose startup auto-ingest already materialised the accepted
  * baseline: 413 逻辑FK列 + 74 ER证据摘录 = 487 edges.
+ *
+ * <p>Review P2 (test isolation): {@code @Transactional} — every verdict flip, synthetic row and
+ * re-ingest churn rolls back, so no ordering coupling leaks into other test classes.
  */
 @SpringBootTest
+@org.springframework.transaction.annotation.Transactional
 class RelationReingestTest {
 
     @Autowired

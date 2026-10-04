@@ -14,6 +14,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
+                // PATCH is a real verb here (draft persistence / verdict edits) — without it the
+                // browser preflight for PATCH dies at the CORS layer (review N-11)
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
     }
 }

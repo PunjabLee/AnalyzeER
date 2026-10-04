@@ -339,7 +339,22 @@ export const api = {
   // audit (ADMIN)
   audit: (size = 100) => request<Page<AuditLog>>('/api/audit?size=' + size),
 
-  // export links (open in browser)
-  exportJsonUrl: (domain?: string) => '/api/export/json' + (domain ? '?domain=' + domain : ''),
-  exportYamlUrl: (domain?: string) => '/api/export/yaml' + (domain ? '?domain=' + domain : '')
+  // export (P2 role-gated: bulk catalog download needs STEWARD/ADMIN, so it is fetched with the
+  // JWT header and saved via a Blob — a bare <a href> would 403 without Authorization)
+  async downloadExport(fmt: 'json' | 'yaml', domain?: string): Promise<void> {
+    const qs = domain ? '?domain=' + encodeURIComponent(domain) : ''
+    const res = await fetch('/api/export/' + fmt + qs, { headers: authHeaders() })
+    if (!res.ok) {
+      throw new Error('导出失败（' + res.status + '）：需 STEWARD/ADMIN 权限')
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'dam-catalog' + (domain ? '-' + domain : '') + '.' + fmt
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
 }

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, type AssetSummary, type DomainInfo, type Facets } from '../api'
+import { hasRole } from '../auth'
 
 const router = useRouter()
 const count = ref<number>(0)
@@ -39,6 +40,16 @@ function pickDomain(code: string) {
 function pickGrading(g: string) {
   activeGrading.value = activeGrading.value === g ? '' : g
   loadList()
+}
+
+// P2: bulk export is role-gated server-side (STEWARD/ADMIN); hide the entry for others
+const canExport = computed(() => hasRole('STEWARD', 'ADMIN'))
+async function doExport(fmt: 'json' | 'yaml') {
+  try {
+    await api.downloadExport(fmt, activeDomain.value || undefined)
+  } catch (e) {
+    error.value = String(e)
+  }
 }
 
 onMounted(async () => {
@@ -83,8 +94,8 @@ onMounted(async () => {
         </ul>
       </div>
 
-      <a class="export" :href="api.exportJsonUrl(activeDomain || undefined)" target="_blank">导出 JSON</a>
-      <a class="export" :href="api.exportYamlUrl(activeDomain || undefined)" target="_blank">导出 YAML</a>
+      <a v-if="canExport" class="export" href="#" @click.prevent="doExport('json')">导出 JSON</a>
+      <a v-if="canExport" class="export" href="#" @click.prevent="doExport('yaml')">导出 YAML</a>
     </aside>
 
     <main class="main">

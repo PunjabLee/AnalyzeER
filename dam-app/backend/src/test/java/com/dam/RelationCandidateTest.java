@@ -27,8 +27,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ({@code candidate_targets}), not prose squeezed into the 300-char {@code basis_raw}. Entries are
  * enumerable by the future workbench, immune to truncation, and every named candidate must be a
  * REAL catalog asset (R4: a candidate may name an alternative, never fabricate one).
+ *
+ * <p>Review P2 (test isolation): {@code @Transactional} — re-ingest churn stays inside the rolled-back
+ * test transaction instead of leaking into other classes' view of the shared edge store.
  */
 @SpringBootTest
+@org.springframework.transaction.annotation.Transactional
 class RelationCandidateTest {
 
     @Autowired

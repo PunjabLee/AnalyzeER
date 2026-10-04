@@ -43,9 +43,16 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(reg -> reg
                         .requestMatchers("/api/auth/**").permitAll()
+                        // deployment liveness probe ONLY (review P2): the actuator surface stays shut
+                        // beyond /health — env/mappings etc. would leak the config, so they fall to denyAll
+                        .requestMatchers("/actuator/health").permitAll()
                         // CORS preflight never carries Authorization — must stay open
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/audit/**").hasRole("ADMIN")
+                        // P2 tightening (owner-approved 2026-10-04): bulk metadata download is a
+                        // governance action, NOT part of the POC anonymous-read surface — must sit
+                        // BEFORE the GET matcher, which would otherwise permitAll it
+                        .requestMatchers("/api/export/**").hasAnyRole("ADMIN", "STEWARD")
                         // POC read 口径 (owner decision 2026-10-04): GET/HEAD /api/** anonymous;
                         // flip this ONE matcher to authenticated() (or a viewer role) for production
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()

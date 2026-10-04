@@ -45,9 +45,22 @@ class SecurityHardeningTest {
     }
 
     @Test
+    void bulkExportIsRoleGatedWhileBrowseStaysOpen() throws Exception {
+        // P2 (owner-approved 2026-10-04): /api/export/** drags the WHOLE catalog in one shot —
+        // outside the POC anonymous-read surface; per-asset/lineage browsing stays open
+        mvc.perform(get("/api/export/json")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/export/yaml")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/lineage").param("asset", "jf_sales_order"))
+                .andExpect(status().isOk());   // the boundary: browsing unaffected
+    }
+
+    @Test
     void pathsOutsideTheWhitelistFailClosed() throws Exception {
         // the pre-M-4 fallback was permitAll: these answered 200/404 openly. denyAll now refuses.
-        mvc.perform(get("/actuator/health")).andExpect(status().isForbidden());
+        // P2 exception: /actuator/health is the ONE operational probe opened for deployments…
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+        // …while the rest of the actuator surface (config/mapping leaks) stays denied.
+        mvc.perform(get("/actuator/env")).andExpect(status().isForbidden());
         mvc.perform(get("/")).andExpect(status().isForbidden());
         mvc.perform(get("/some/future/endpoint")).andExpect(status().isForbidden());
     }
@@ -60,6 +73,12 @@ class SecurityHardeningTest {
                         .options("/api/ingest/relations")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isOk());
+        // review N-11: PATCH (draft persistence) must preflight too — it was missing from CORS
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .options("/api/model/ldm/1")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "PATCH"))
                 .andExpect(status().isOk());
     }
 

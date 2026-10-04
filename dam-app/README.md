@@ -145,7 +145,7 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 ### M-4 安全加固（评审团最后一项，口径经用户批准 2026-10-04，`mvn test` 92/92）
 
 - 兜底由 `anyRequest().permitAll()`（fail-open）改 **`denyAll()`（fail-closed）**：未显式匹配的未来控制器/`/actuator`/杂散路径一律 403。
-- 读口径（批准项）：POC 期 **GET/HEAD `/api/**` 匿名可读**（目录/血缘/影响清单导出浏览器直开）；生产 IAM 接入时只需翻转这一行 matcher 为 `authenticated()`（变更面已在 `SecurityConfig` 注释里钉死）。
+- 读口径（批准项）：POC 期 **GET/HEAD `/api/**` 匿名可读**（目录/血缘/影响清单导出浏览器直开；**[P2 勘误 2026-10-04]** `/api/export/**` 全量批量导出后经用户批准收紧为角色门禁，不在匿名面内）；生产 IAM 接入时只需翻转这一行 matcher 为 `authenticated()`（变更面已在 `SecurityConfig` 注释里钉死）。
 - 写门禁维持原有粒度：元数据写 ADMIN/STEWARD、摄取 ADMIN、审计 ADMIN、删除 ADMIN；新增 **OPTIONS 预放行**（CORS 预检不带 token 必须畅通）。
 - `SecurityHardeningTest` 5 例（匿名读 200/匿名写 403/白名单外 fail-closed/preflight 无 token 200/admin JWT 写 200）；真实 MySQL 8 HTTP 层全矩阵实测：匿名 GET 200、匿名 POST 403、`/actuator/health` 与 `/foo` 403、admin JWT POST 200；基线 ②413/①74/总487、悬空=0、血缘 41/48 零侵蚀。
 
@@ -180,6 +180,13 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - **N-12 conflict_flag 语义过载更正**：javadoc 改准为“三位一体的待复核位”（①目标冲突/①多父候选/P0 隔离态三种来源，区分靠 ingest_trace+candidate_targets）；origin 枚举断言修正已随 P1 落账。
 - **新门**：`ErEvidenceIntegrityTest` 新增全库不变式 `basis_raw 永不含｜ER`＋`erTraceNotesNeverPolluteBasisRaw`；`RelationCandidateTest` 新增 `channel1OnlyReingestRebuildsErEntriesWithoutDrift`；隔离态断言改指 trace。
 - **真实 MySQL 8 冒烟（就地升级）**：`ingest_trace` 列自动新增；链式重跑零 churn（created=0/reused=413/newEdges=0）；basis 污染 **87（13②+74①）→0**、trace 落记 **82** 条；①单独重跑 ER 候选恒 **6 条目/3 边**（wipe+rebuild 无漂移，=C-1 时代 5 多父+1 自证否认）；基线 ②413/①74/总487、血缘 41/49·15/22、impact 40 零侵蚀。
+
+### P2 运维卫生批（二轮评审 N-11 + 导出口径收紧，口径经用户批准 2026-10-04，`mvn test` 105/105）
+
+- **CORS 补 PATCH（N-11）**：`WebConfig` 的 `allowedMethods` 缺 PATCH→前端 PATCH（存草稿/判决回写）预检会在 CORS 层挂。现补齐；`SecurityHardeningTest` 新增 PATCH 预检 200 断言。
+- **actuator 健康检查放行**：引入 `spring-boot-starter-actuator`，`SecurityConfig` 新增 `permitAll("/actuator/health")`（**仅** health，供部署存活探针）；`/actuator/env`、`/actuator/info` 仍回 denyAll 403（配置/映射不外泄）。实测 health 200、env/info 403。
+- **批量导出收紧为角色门禁（口径变更，用户批准）**：`/api/export/json|yaml` 一次拖走全目录（1322 表+关系），不属 POC 匿名只读面——新增 `hasAnyRole("ADMIN","STEWARD")`（置于 GET 匹配器**前**，否则被 permitAll 抢）。前端 `CatalogView` 随之改为带 JWT 的 `fetch`+Blob 下载（旧 `<a href>` 直链无 Authorization 头会 403），非角色用户隐藏入口。`SecurityHardeningTest.bulkExportIsRoleGatedWhileBrowseStaysOpen` 锁定边界（export 403/lineage 仍 200）；实测匿名 export 403、admin export 200（4.7MB）、匿名 lineage/impact 仍 200。
+- **测试隔离（P2）**：`RelationReingestTest`/`RelationCandidateTest` 加 `@Transactional`——判决翻转、合成行、重灌 churn 均随测试事务回滚，不再漏入其他类共享的边库视图（消除类间顺序耦合）。
 
 ## 关键设计口径（对齐评审结论）
 
