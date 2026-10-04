@@ -142,6 +142,13 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - **M-1 census 基线刷新**：`ErCorpusSymbolCensusTest` javadoc 与边界改为当前实测（total=456 · ONE_TO_MANY=293 · AMBIGUOUS=126 · ONE_TO_ONE=13 · UNSUPPORTED=13 · N:N=3 · MANY_TO_ONE=8），并**新增 MANY_TO_ONE≥8 断言**（S1 方向修复后该桶已是承重桶）。
 - **悬空边清扫（M-5 冒烟发现）**：②链尾部新增全源清扫——`from_asset_id` 缺失或已解析 `to_asset_id` 缺失的边（含①边）一律删，`RelationReport` 新增 `danglingRemoved`；真实 MySQL 8 实测闭环：`/ddl` 重建→`/relations` 报 `danglingRemoved=74`→`/er-evidence` 重铺→**自动恢复 ②413/①74/总487、悬空=0**，无需手工干预；血缘/影响清单基线（41/48·15/17·impact 40）零侵蚀。
 
+### M-4 安全加固（评审团最后一项，口径经用户批准 2026-10-04，`mvn test` 92/92）
+
+- 兜底由 `anyRequest().permitAll()`（fail-open）改 **`denyAll()`（fail-closed）**：未显式匹配的未来控制器/`/actuator`/杂散路径一律 403。
+- 读口径（批准项）：POC 期 **GET/HEAD `/api/**` 匿名可读**（目录/血缘/影响清单导出浏览器直开）；生产 IAM 接入时只需翻转这一行 matcher 为 `authenticated()`（变更面已在 `SecurityConfig` 注释里钉死）。
+- 写门禁维持原有粒度：元数据写 ADMIN/STEWARD、摄取 ADMIN、审计 ADMIN、删除 ADMIN；新增 **OPTIONS 预放行**（CORS 预检不带 token 必须畅通）。
+- `SecurityHardeningTest` 5 例（匿名读 200/匿名写 403/白名单外 fail-closed/preflight 无 token 200/admin JWT 写 200）；真实 MySQL 8 HTTP 层全矩阵实测：匿名 GET 200、匿名 POST 403、`/actuator/health` 与 `/foo` 403、admin JWT POST 200；基线 ②413/①74/总487、悬空=0、血缘 41/48 零侵蚀。
+
 ## 关键设计口径（对齐评审结论）
 
 - **结构 ← DDL，关系 ← ER 证据**：本库 0 外键，`DdlParser` 只摄取表/列结构；
