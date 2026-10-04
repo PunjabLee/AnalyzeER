@@ -119,6 +119,24 @@ public class ErEvidenceIngestionService {
         Map<String, List<MetaRelation>> edgesAt = new HashMap<>();
         for (MetaRelation r : relRepo.findAll()) {
             edgesAt.computeIfAbsent(posKey(r.getFromAssetId(), r.getFromColumn()), k -> new ArrayList<>()).add(r);
+            // N-5 candidate lifecycle: channel-1 entries are REBUILT by this pass, not accumulated —
+            // wipe every stored ER entry first so a candidate whose ER evidence changed or vanished can
+            // never linger (mirrors channel-2's replaceSource; corpus-wide here because one edge may be
+            // touched by several ER lines within a pass). Channel-2 entries are untouched.
+            if (r.getCandidateTargets() != null) {
+                r.setCandidateTargets(Candidates.replaceSource(r.getCandidateTargets(), ORIGIN_ER, List.of()));
+            }
+            // N-4 one-time migration: legacy rows still carry ER notes inside basis_raw — move them
+            // into the dedicated trace column so the basis is pure document text again (idempotent;
+            // channel-2 rows self-heal on the next refresh, channel-1 rows are fixed here).
+            String basis = r.getBasisRaw();
+            if (basis != null) {
+                int at = basis.indexOf("｜ER");
+                if (at >= 0) {
+                    r.setBasisRaw(at == 0 ? null : basis.substring(0, at));
+                    appendTrace(r, basis.substring(at));
+                }
+            }
         }
 
         // read every ER line once (keep the source doc for provenance)
@@ -335,19 +353,19 @@ public class ErEvidenceIngestionService {
 
     private void markConflict(MetaRelation e, MetaAsset erParent) {
         e.setConflictFlag(true);   // ②与 ER 指向不同具体目标：可过滤冲突位（S3-1）
-        appendNote(e, "｜ER冲突目标:" + erParent.getName());
+        appendTrace(e, "｜ER冲突目标:" + erParent.getName());
         addCandidate(e, erParent, null, "目标冲突");
     }
 
     private void appendCandidate(MetaRelation e, MetaAsset erParent, String doc, String why) {
-        appendNote(e, "｜ER候选:" + erParent.getName() + "(" + why + ",未消解)");
+        appendTrace(e, "｜ER候选:" + erParent.getName() + "(" + why + ",未消解)");
         addCandidate(e, erParent, doc, why);
     }
 
     /**
-     * R3 (C-1): record the deferred ER parent STRUCTURALLY on the edge (JSON list) — the prose
-     * note above is kept for human readers but is no longer the only carrier, since basis_raw's
-     * 300-char cut could silently truncate a candidate and the workbench needs to enumerate them.
+     * R3 (C-1): record the deferred ER parent STRUCTURALLY on the edge (JSON list) — the trace
+     * note above is kept for human readers but is no longer the only carrier, since it shares the
+     * edge with every other ER line and the workbench needs an exact, enumerable, lifecycle-owned set.
      */
     private void addCandidate(MetaRelation e, MetaAsset erParent, String doc, String why) {
         e.setCandidateTargets(Candidates.upsert(e.getCandidateTargets(),
@@ -355,18 +373,22 @@ public class ErEvidenceIngestionService {
     }
 
     private void appendResolved(MetaRelation e, MetaAsset erParent, String doc) {
-        appendNote(e, "｜ER消解:" + erParent.getName() + "@" + doc);
+        appendTrace(e, "｜ER消解:" + erParent.getName() + "@" + doc);
     }
 
     private void appendSource(MetaRelation e, String doc) {
-        appendNote(e, "｜ER:" + doc);
+        appendTrace(e, "｜ER:" + doc);
     }
 
-    /** append a marker to basis_raw idempotently (never duplicate), truncating to the column width. */
-    private void appendNote(MetaRelation e, String note) {
-        String basis = e.getBasisRaw() == null ? "" : e.getBasisRaw();
-        if (!basis.contains(note)) {
-            e.setBasisRaw(cut(basis + note, 300));
+    /**
+     * Append a trace marker to {@code ingest_trace} idempotently (never duplicate). Review N-4:
+     * channel-1 processing notes NEVER enter {@code basis_raw} again — that column is pure document
+     * text so channel-2 refreshes stay live; the trace column is untruncated longtext.
+     */
+    private void appendTrace(MetaRelation e, String note) {
+        String trace = e.getIngestTrace() == null ? "" : e.getIngestTrace();
+        if (!trace.contains(note)) {
+            e.setIngestTrace(trace + note);
         }
     }
 
@@ -385,7 +407,8 @@ public class ErEvidenceIngestionService {
         r.setInferred(true);
         r.setConfirmStatus("待确认");
         r.setCrossDomain(pr.getCrossDomain());
-        r.setBasisRaw(cut(pr.getLabelRaw() + "｜ER:" + doc, 300));
+        r.setBasisRaw(cut(pr.getLabelRaw(), 300));   // ER label text only (N-4): provenance goes to the trace
+        r.setIngestTrace("｜ER:" + doc);
         r.setSourceDoc(cut(doc, 200));
         return r;
     }

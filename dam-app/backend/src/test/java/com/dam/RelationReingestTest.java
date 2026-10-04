@@ -168,8 +168,10 @@ class RelationReingestTest {
             MetaRelation kept = relRepo.findById(ghost.getId()).orElseThrow();
             assertEquals("已确认", kept.getConfirmStatus(), "quarantine must not reset the verdict");
             assertTrue(kept.isConflictFlag(), "quarantine raises conflict_flag");
-            assertTrue(kept.getBasisRaw() != null && kept.getBasisRaw().contains("文档证据消失待复核"),
-                    "quarantine leaves a trace note in basis_raw");
+            assertTrue(kept.getIngestTrace() != null && kept.getIngestTrace().contains("文档证据消失待复核"),
+                    "quarantine leaves a re-review note in ingest_trace (N-4: not in basis_raw)");
+            assertTrue(kept.getBasisRaw() == null || !kept.getBasisRaw().contains("待复核"),
+                    "basis_raw stays pure document text");
             assertEquals(0, report.danglingKept());
         } finally {
             relRepo.deleteById(ghost.getId());

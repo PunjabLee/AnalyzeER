@@ -105,4 +105,36 @@ class RelationCandidateTest {
                 .collect(Collectors.toMap(MetaRelation::getId, snapshot));
         assertEquals(before, after, "a ②+① re-run must neither duplicate nor drop candidate entries");
     }
+
+    /**
+     * Review N-5 lifecycle: channel-1 ER entries are REBUILT by each ① pass (wiped first, then
+     * re-added from the corpus), never merely accumulated — an ①-only re-run over an unchanged
+     * corpus must land on the exact same entry set, and repeated runs must never drift or double up.
+     */
+    @Test
+    void channel1OnlyReingestRebuildsErEntriesWithoutDrift() {
+        Function<MetaRelation, Set<Candidate>> erEntries = r ->
+                Candidates.read(r.getCandidateTargets()).stream()
+                        .filter(c -> ErEvidenceIngestionService.ORIGIN_ER.equals(c.source()))
+                        .collect(Collectors.toSet());
+
+        erEvidenceService.ingest(null);   // pass 1: wipe + rebuild from the live corpus
+        Map<Long, Set<Candidate>> first = relRepo.findAll().stream()
+                .filter(r -> !erEntries.apply(r).isEmpty())
+                .collect(Collectors.toMap(MetaRelation::getId, erEntries));
+        assertFalse(first.isEmpty(), "the corpus legitimately defers ER candidates (多父/自证否认/冲突)");
+
+        erEvidenceService.ingest(null);   // pass 2: same lifecycle again
+        Map<Long, Set<Candidate>> second = relRepo.findAll().stream()
+                .filter(r -> !erEntries.apply(r).isEmpty())
+                .collect(Collectors.toMap(MetaRelation::getId, erEntries));
+
+        assertEquals(first, second, "①-only re-runs must rebuild (not accumulate) ER entries");
+        // channel-2 entries on the same rows are owned by ② and must survive untouched
+        assertTrue(relRepo.findAll().stream()
+                .filter(r -> "逻辑FK列".equals(r.getOrigin()))
+                .flatMap(r -> Candidates.read(r.getCandidateTargets()).stream())
+                .filter(c -> "逻辑FK列".equals(c.source()))
+                .allMatch(c -> "多态A/B".equals(c.why())), "② entries keep their own lifecycle");
+    }
 }

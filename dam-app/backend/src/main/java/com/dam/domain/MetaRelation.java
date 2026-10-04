@@ -68,17 +68,37 @@ public class MetaRelation {
     private String cardinality;
 
     /**
-     * Set when channel-1 ER evidence points this (from,col) edge at a DIFFERENT concrete target than
-     * channel-2 already did (S3-1). A filterable flag for the confirmation workbench — kept separate
-     * from confirm_status so the 待确认/已确认/驳回 loop stays untouched. The human-readable detail
-     * (the conflicting ER target) is still appended to basis_raw.
+     * A filterable "needs human disambiguation" flag for the confirmation workbench — kept separate
+     * from confirm_status so the 待确认/已确认/驳回 loop stays uncontaminated. It is set by ANY of
+     * three reviewers (review N-12: the flag is overloaded BY DESIGN, the origin is told apart by
+     * {@link #ingestTrace} / {@link #candidateTargets}, not by this boolean alone):
+     * <ol>
+     *   <li>channel-1 ER evidence points this (from,col) edge at a DIFFERENT concrete target than
+     *       channel-2 already did (S3-1, {@code markConflict});</li>
+     *   <li>an ER prose edge has &gt;1 parent candidate for its (child,fk) position (R3 multi-parent,
+     *       {@code resolveProse});</li>
+     *   <li>an ACCEPTED (已确认) edge was quarantined because its document evidence vanished or an
+     *       endpoint left the catalog — verdict kept, flagged for re-review (N-3, {@code quarantine}).</li>
+     * </ol>
      */
     @Column(name = "conflict_flag", nullable = false)
     private boolean conflictFlag = false;
 
-    /** 依据原文 as written after the target inside FK[...] (minus the · separators) */
+    /** 依据原文 as written after the target inside FK[...] (minus the · separators). DOCUMENT TEXT ONLY
+     *  (review N-4): ingestion trace is never mixed in here, so a re-parse can always refresh it to the
+     *  current source without a stale ER note permanently freezing the accepted M1 basis. */
     @Column(name = "basis_raw", length = 300)
     private String basisRaw;
+
+    /**
+     * Append-only ingestion trace (review N-4): channel-1 overlay notes (｜ER:doc / ｜ER消解 / ｜ER候选 /
+     * ｜ER冲突目标) and quarantine notes (｜…待复核). Kept OUT of {@code basis_raw} (a dedicated, untruncated
+     * longtext) so the doc-derived basis stays refreshable and the human-readable audit trail survives
+     * independently. Not exposed to the workbench enumeration — that is {@link #candidateTargets}' job.
+     */
+    @Lob
+    @Column(name = "ingest_trace", columnDefinition = "longtext")
+    private String ingestTrace;
 
     /** source document, e.g. 03-逻辑数据模型/D01-销售订单域.md */
     @Column(name = "source_doc", length = 200)
@@ -136,6 +156,8 @@ public class MetaRelation {
     public void setConflictFlag(boolean conflictFlag) { this.conflictFlag = conflictFlag; }
     public String getBasisRaw() { return basisRaw; }
     public void setBasisRaw(String basisRaw) { this.basisRaw = basisRaw; }
+    public String getIngestTrace() { return ingestTrace; }
+    public void setIngestTrace(String ingestTrace) { this.ingestTrace = ingestTrace; }
     public String getSourceDoc() { return sourceDoc; }
     public void setSourceDoc(String sourceDoc) { this.sourceDoc = sourceDoc; }
     public String getCandidateTargets() { return candidateTargets; }

@@ -172,6 +172,15 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - **N-10 探针门控真跑**：`MysqlDialectProbeTest` 由 `@Disabled` 改 `@EnabledIfSystemProperty(named="dam.probe.mysql")`——按需真实 MySQL 8 执行（`mvn test -Dtest=MysqlDialectProbeTest -Ddam.probe.mysql=true`，实库 3/3 绿），不再是从不运行的死文档；默认 `mvn test` 仍跳过（Skipped=3）。
 - **真实 MySQL 8 冒烟（HTTP 层）**：新基线 down **41/49**、up **15/22**、impact **40** 全部达成；同一查询两次输出逐字节 **SAME**（确定性实证）。
 
+### P1.5 候选与证据卫生批（二轮评审 N-4/N-5/N-9/N-12，`mvn test` 104/104）
+
+- **N-4 文档原文与 ER 轨迹分离**：`meta_relation` 新列 `ingest_trace`（longtext 免截断）专门承载处理轨迹（｜ER:出处/｜ER消解/｜ER候选/｜ER冲突目标/隔离待复核追记）；`basis_raw` 从此**只存文档原文**。旧代码里② refresh 见“｜ER”即冻结 basis（二轮评审实库实证 13 条已污染），分离后 basis 永远随文档刷新，13 条存量冻结自愈；①重跑时另带一次性迁移把存量 ER 边 basis 里的注记搬进 trace（幂等）。
+- **N-5 ①候选获得生命周期**：通道①每次 pass 先 wipe 全部 `source=ER证据摘录` 候选条目再按当前语料重建（对齐②的 `replaceSource`；跨语料 wipe 因一边可被多 ER 行命中），②自有条目不受碰——ER 证据变化/消失后陈旧候选不再只增不减。
+- **N-9 discriminator 合同回归**：该功能全库 0 实例=从未被验证过的死代码风险；新增合成直测 `DiscriminatorExtractionTest`（合同级：`（按 col`/`(按 col`/`（依 col`提取；无括号引导/非列名开头/null 一律不臆造）；不伪造语料数据。
+- **N-12 conflict_flag 语义过载更正**：javadoc 改准为“三位一体的待复核位”（①目标冲突/①多父候选/P0 隔离态三种来源，区分靠 ingest_trace+candidate_targets）；origin 枚举断言修正已随 P1 落账。
+- **新门**：`ErEvidenceIntegrityTest` 新增全库不变式 `basis_raw 永不含｜ER`＋`erTraceNotesNeverPolluteBasisRaw`；`RelationCandidateTest` 新增 `channel1OnlyReingestRebuildsErEntriesWithoutDrift`；隔离态断言改指 trace。
+- **真实 MySQL 8 冒烟（就地升级）**：`ingest_trace` 列自动新增；链式重跑零 churn（created=0/reused=413/newEdges=0）；basis 污染 **87（13②+74①）→0**、trace 落记 **82** 条；①单独重跑 ER 候选恒 **6 条目/3 边**（wipe+rebuild 无漂移，=C-1 时代 5 多父+1 自证否认）；基线 ②413/①74/总487、血缘 41/49·15/22、impact 40 零侵蚀。
+
 ## 关键设计口径（对齐评审结论）
 
 - **结构 ← DDL，关系 ← ER 证据**：本库 0 外键，`DdlParser` 只摄取表/列结构；

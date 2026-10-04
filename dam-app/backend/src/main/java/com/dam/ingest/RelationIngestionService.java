@@ -288,8 +288,9 @@ public class RelationIngestionService {
     /**
      * Refresh document-derived facts on a reused row WITHOUT touching verdicts:
      * confirm_status / conflict_flag / cardinality stay; an ER-pinned to_asset_id is never
-     * nulled by a prose re-parse; to_column is only added, never removed; basis_raw keeps any
-     * ER trace notes (｜ER…) instead of being overwritten.
+     * nulled by a prose re-parse; to_column is only added, never removed. {@code basis_raw} is
+     * now ALWAYS refreshed from the current document (review N-4: ingestion trace no longer lives
+     * here, so nothing can freeze the accepted M1 basis text anymore).
      */
     private void refresh(MetaRelation e, MetaAsset from, ParsedRelation pr, MetaAsset to,
                          String cross, String relPath) {
@@ -305,13 +306,13 @@ public class RelationIngestionService {
         e.setEvidenceLevel(pr.evidenceLevel());
         e.setConfidence(pr.confidence());
         e.setCrossDomain(cross);
-        e.setDiscriminator(discriminatorOf(pr));
+        e.setDiscriminator(extractDiscriminator(
+                (pr.getTargetRaw() == null ? "" : pr.getTargetRaw())
+                        + " " + (pr.getBasisRaw() == null ? "" : pr.getBasisRaw())));
         // rebuild OUR candidate entries; channel-1 (ER) entries on this row survive the refresh
         e.setCandidateTargets(Candidates.replaceSource(e.getCandidateTargets(), ORIGIN_CH2,
                 ch2Candidates(pr, relPath)));
-        if (e.getBasisRaw() == null || !e.getBasisRaw().contains("｜ER")) {
-            e.setBasisRaw(cut(pr.getBasisRaw(), 300));   // no ER notes yet -> doc text wins
-        }
+        e.setBasisRaw(cut(pr.getBasisRaw(), 300));   // pure document text (N-4: no ER note can freeze it)
         e.setSourceDoc(cut(relPath, 200));
     }
 
@@ -330,11 +331,12 @@ public class RelationIngestionService {
         return fresh;
     }
 
-    /** the discriminator column ONLY if a source document spells it out (e.g. “（按 order_type）”). */
-    private static String discriminatorOf(ParsedRelation pr) {
-        String hay = (pr.getTargetRaw() == null ? "" : pr.getTargetRaw())
-                + " " + (pr.getBasisRaw() == null ? "" : pr.getBasisRaw());
-        Matcher m = DISCRIMINATOR.matcher(hay);
+    /**
+     * The discriminator column ONLY if a source document spells it out (e.g. “（按 order_type）”)
+     * — never inferred (R4). Package-visible for the R3 positive/negative regression (review N-9).
+     */
+    static String extractDiscriminator(String haystack) {
+        Matcher m = DISCRIMINATOR.matcher(haystack == null ? "" : haystack);
         return m.find() ? m.group(1) : null;
     }
 
@@ -350,12 +352,12 @@ public class RelationIngestionService {
                 + "\u0001" + (targetRaw == null ? "" : targetRaw.trim());
     }
 
-    /** Verdict-preserving quarantine: keep the row, flag it, annotate the trace (300-char cut). */
+    /** Verdict-preserving quarantine: keep the row, flag it, record the re-review trace (N-4: in ingest_trace). */
     private void quarantine(MetaRelation r, String traceNote) {
         r.setConflictFlag(true);
-        String basis = r.getBasisRaw() == null ? "" : r.getBasisRaw();
-        if (!basis.contains(traceNote)) {
-            r.setBasisRaw(cut(basis + traceNote, 300));
+        String trace = r.getIngestTrace() == null ? "" : r.getIngestTrace();
+        if (!trace.contains(traceNote)) {
+            r.setIngestTrace(trace + traceNote);
         }
     }
 
@@ -376,7 +378,9 @@ public class RelationIngestionService {
         r.setInferred(true);
         r.setConfirmStatus("待确认");
         r.setCrossDomain(cross);
-        r.setDiscriminator(discriminatorOf(pr));
+        r.setDiscriminator(extractDiscriminator(
+                (pr.getTargetRaw() == null ? "" : pr.getTargetRaw())
+                        + " " + (pr.getBasisRaw() == null ? "" : pr.getBasisRaw())));
         r.setCandidateTargets(Candidates.write(ch2Candidates(pr, doc)));
         r.setBasisRaw(cut(pr.getBasisRaw(), 300));
         r.setSourceDoc(cut(doc, 200));

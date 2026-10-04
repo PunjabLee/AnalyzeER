@@ -129,14 +129,28 @@ class ErEvidenceIntegrityTest {
 
     @Test
     void selfDenyingOrMultiParentCandidateNeverPinsTarget() {
-        // S1-1/S1-2 守卫：被判定「自证否认」或「多父候选」的 ER 候选只写进 basis_raw（带『未消解』），
-        // 绝不把②散文边的 to_asset_id 钉死——命中该注记的边必须仍未解析目标。
+        // S1-1/S1-2 守卫：被判定「自证否认」或「多父候选」的 ER 候选只写进 ingest_trace（带『未消解』，
+        // N-4 后不再混入 basis_raw），绝不把②散文边的 to_asset_id 钉死——命中该注记的边必须仍未解析目标。
         List<MetaRelation> offenders = relationRepo.findAll().stream()
-                .filter(r -> r.getBasisRaw() != null && r.getBasisRaw().contains("未消解"))
+                .filter(r -> r.getIngestTrace() != null && r.getIngestTrace().contains("未消解"))
                 .filter(r -> r.getToAssetId() != null)
                 .toList();
         assertTrue(offenders.isEmpty(),
                 "含『未消解』注记的边不得有具体 to_asset_id，实得 " + offenders.size() + " 条");
+    }
+
+    /** Review N-4: basis_raw is PURE document text — processing trace lives only in ingest_trace. */
+    @Test
+    void erTraceNotesNeverPolluteBasisRaw() {
+        List<MetaRelation> polluted = relationRepo.findAll().stream()
+                .filter(r -> r.getBasisRaw() != null && r.getBasisRaw().contains("｜ER"))
+                .toList();
+        assertTrue(polluted.isEmpty(),
+                "basis_raw 不得再含 ER 轨迹注记，实得 " + polluted.size() + " 条");
+        long traced = relationRepo.findAll().stream()
+                .filter(r -> r.getIngestTrace() != null && r.getIngestTrace().contains("｜ER"))
+                .count();
+        assertTrue(traced > 0, "通道①参与过的边应在 ingest_trace 留下轨迹（列未被使用）");
     }
 
     @Test
