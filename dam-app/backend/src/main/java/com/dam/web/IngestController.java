@@ -42,10 +42,11 @@ public class IngestController {
     }
 
     /**
-     * POST /api/ingest/relations ; rebuilds FK[...] edges from 03-逻辑数据模型 (channel-2) and then
-     * re-overlays ER evidence (channel-1). Channel-2 does a full delete+rebuild, so the overlay must
-     * follow here too — otherwise a manual channel-2 re-run would silently drop the cardinality and
-     * all ER证据摘录 edges until the next restart.
+     * POST /api/ingest/relations ; upserts FK[...] edges from 03-逻辑数据模型 (channel-2, incremental:
+     * confirm_status/已确认/驳回 verdicts and all ER证据摘录 edges survive — C-2 remediation) and then
+     * re-overlays ER evidence (channel-1). The overlay follows because channel-2 refreshes
+     * document-derived facts (evidence/confidence/basis), so channel-1 must recompute its
+     * upgrades, cardinality and conflict marks on top of the fresh base.
      */
     @PostMapping("/relations")
     public RelationStageResult ingestRelations(@RequestParam(required = false) String dir) {
@@ -60,9 +61,9 @@ public class IngestController {
 
     /**
      * POST /api/ingest/er-evidence ; re-overlays ER evidence (channel-1) onto the CURRENT relation
-     * store WITHOUT rebuilding channel-2. Unlike /relations (whose channel-2 stage does a full
-     * delete+rebuild that resets every confirm_status to 待确认), this is safe to call after human
-     * confirmation work: it re-enriches cardinality/evidence idempotently and preserves 已确认/驳回.
+     * store WITHOUT touching channel-2. Since C-2 both this and /relations are safe to call after
+     * human confirmation work: cardinality/evidence re-enrich idempotently and 已确认/驳回 verdicts
+     * (and 驳回 positions) are preserved by both channels.
      */
     @PostMapping("/er-evidence")
     public ErEvidenceIngestionService.ErReport ingestErEvidence(@RequestParam(required = false) String dir) {
