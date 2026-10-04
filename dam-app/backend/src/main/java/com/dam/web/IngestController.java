@@ -1,5 +1,6 @@
 package com.dam.web;
 
+import com.dam.audit.AuditService;
 import com.dam.ingest.DdlIngestionService;
 import com.dam.ingest.ErEvidenceIngestionService;
 import com.dam.ingest.ErModelLabelsIngestionService;
@@ -18,21 +19,37 @@ public class IngestController {
     private final ErModelLabelsIngestionService labelsService;
     private final RelationIngestionService relationService;
     private final ErEvidenceIngestionService erEvidenceService;
+    private final AuditService audit;
 
     public IngestController(DdlIngestionService ingestionService,
                             ErModelLabelsIngestionService labelsService,
                             RelationIngestionService relationService,
-                            ErEvidenceIngestionService erEvidenceService) {
+                            ErEvidenceIngestionService erEvidenceService,
+                            AuditService audit) {
         this.ingestionService = ingestionService;
         this.labelsService = labelsService;
         this.relationService = relationService;
         this.erEvidenceService = erEvidenceService;
+        this.audit = audit;
     }
 
-    /** POST /api/ingest/ddl?path=<optional sql path> ; empty path -> resolve default test_erp.sql */
+    /**
+     * POST /api/ingest/ddl?path=&lt;optional sql path&gt;&dryRun=false — in-place upsert of
+     * structure with PINNED ids (review N-1/N-2: re-ingestion no longer renumbers assets/columns,
+     * so M2 model mappings, term bindings and relation verdicts survive).
+     *
+     * <p>{@code dryRun=true} returns the exact impact preview (created/updated/unchanged/evicted
+     * per asset and column) and writes NOTHING — the pre-flight check before pointing a
+     * production-shaped DDL at this endpoint. Every real run is audited (action=INGEST_DDL).
+     */
     @PostMapping("/ddl")
-    public IngestReport ingestDdl(@RequestParam(required = false) String path) {
-        return ingestionService.ingestPath(path);
+    public IngestReport ingestDdl(@RequestParam(required = false) String path,
+                                  @RequestParam(defaultValue = "false") boolean dryRun) {
+        IngestReport report = ingestionService.ingestPath(path, dryRun);
+        audit.record(dryRun ? "INGEST_DDL_PREVIEW" : "INGEST_DDL",
+                report.getSource(),
+                report.toString() + (dryRun ? " (nothing written)" : ""));
+        return report;
     }
 
     /** POST /api/ingest/er-model-labels ; assigns A/B/C grading + domain codes from 00-总览 */
@@ -43,10 +60,11 @@ public class IngestController {
 
     /**
      * POST /api/ingest/relations ; upserts FK[...] edges from 03-逻辑数据模型 (channel-2, incremental:
-     * confirm_status/已确认/驳回 verdicts and all ER证据摘录 edges survive — C-2 remediation), sweeps
-     * edges whose endpoints no longer resolve in the catalog (danglingRemoved — hygiene invariant
-     * after an asset rebuild such as POST /ingest/ddl), and then re-overlays ER evidence
-     * (channel-1). The overlay follows because channel-2 refreshes
+     * confirm_status/已确认/驳回 verdicts and all ER证据摘录 edges survive — C-2 remediation; stale and
+     * dangling rows carrying a 已确认 verdict are QUARANTINED, never deleted — review N-3), sweeps
+     * verdict-free edges whose endpoints no longer resolve in the catalog (danglingRemoved — a
+     * safety net; since the N-1 fix POST /ingest/ddl pins ids so this should normally be 0), and
+     * then re-overlays ER evidence (channel-1). The overlay follows because channel-2 refreshes
      * document-derived facts (evidence/confidence/basis), so channel-1 must recompute its
      * upgrades, cardinality and conflict marks on top of the fresh base.
      */
