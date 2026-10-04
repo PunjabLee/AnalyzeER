@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -140,5 +142,56 @@ class RelationReingestTest {
         assertEquals(erBefore - 1, countByOrigin("ER证据摘录"), "live ER edges stay untouched");
         assertEquals(413, countByOrigin("逻辑FK列"), "channel-2 baseline unchanged by the sweep");
         assertEquals(totalBefore - 1, relRepo.count());
+    }
+
+    /** Review N-3: vanishing evidence must QUARANTINE a human verdict, never annihilate it. */
+    @Test
+    void confirmedStaleRowIsQuarantinedNotDeleted() {
+        MetaAsset hub = assetRepo.findByNameIgnoreCase("jf_sales_order").orElseThrow();
+        MetaAsset parent = assetRepo.findByNameIgnoreCase("jf_customer").orElseThrow();
+
+        MetaRelation ghost = new MetaRelation();
+        ghost.setFromAssetId(hub.getId());
+        ghost.setFromColumn("zz_ghost_confirmed_col");
+        ghost.setToAssetId(parent.getId());
+        ghost.setTargetRaw("jf_customer·幽灵已确认");
+        ghost.setEvidenceLevel("待确认");
+        ghost.setOrigin("逻辑FK列");
+        ghost.setConfidence(0.1);
+        ghost.setConfirmStatus("已确认");          // a human decision on a now-vanished doc row
+        relRepo.save(ghost);
+
+        try {
+            RelationIngestionService.RelationReport report = relationService.ingest(null);
+
+            assertEquals(1, report.staleKept(), "the confirmed vanished-evidence row is quarantined");
+            MetaRelation kept = relRepo.findById(ghost.getId()).orElseThrow();
+            assertEquals("已确认", kept.getConfirmStatus(), "quarantine must not reset the verdict");
+            assertTrue(kept.isConflictFlag(), "quarantine raises conflict_flag");
+            assertTrue(kept.getBasisRaw() != null && kept.getBasisRaw().contains("文档证据消失待复核"),
+                    "quarantine leaves a trace note in basis_raw");
+            assertEquals(0, report.danglingKept());
+        } finally {
+            relRepo.deleteById(ghost.getId());
+        }
+    }
+
+    /** Review N-3: polymorphic FK[A/B] siblings keep their exact id→target mapping every run. */
+    @Test
+    void polymorphicSiblingTargetMappingIsStableAcrossReingest() {
+        Map<Long, Long> mappingBefore = new HashMap<>();
+        relRepo.findAll().stream()
+                .filter(r -> "逻辑FK列".equals(r.getOrigin()) && r.getToAssetId() != null)
+                .forEach(r -> mappingBefore.put(r.getId(), r.getToAssetId()));
+        assertTrue(mappingBefore.size() > 300, "sanity: pinned-target baseline present (364 in corpus)");
+
+        relationService.ingest(null);
+
+        Map<Long, Long> mappingAfter = new HashMap<>();
+        relRepo.findAll().stream()
+                .filter(r -> "逻辑FK列".equals(r.getOrigin()) && r.getToAssetId() != null)
+                .forEach(r -> mappingAfter.put(r.getId(), r.getToAssetId()));
+        assertEquals(mappingBefore, mappingAfter,
+                "re-ingest must not reassign any channel-2 row's target (no sibling cross-match)");
     }
 }

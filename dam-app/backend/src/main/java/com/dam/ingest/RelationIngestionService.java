@@ -54,6 +54,8 @@ public class RelationIngestionService {
 
     private static final Logger log = LoggerFactory.getLogger(RelationIngestionService.class);
     public static final String ORIGIN_CH2 = "逻辑FK列";
+    /** the human verdict that ingestion must never destroy (review N-3 quarantine trigger). */
+    public static final String VERDICT_CONFIRMED = "已确认";
     private static final Pattern CROSS_DOMAIN = Pattern.compile("跨域\\s*(D\\d{2})");
     private static final Pattern SELF_REF_TEXT = Pattern.compile("自关联|自引用");
     /** R3 discriminator text as written in the docs, e.g. “（按 order_type）” — never inferred (R4). */
@@ -71,19 +73,24 @@ public class RelationIngestionService {
      * @param edges     channel-2 edges produced by this parse of the documents
      * @param created   rows newly inserted (no identity match existed)
      * @param reused    existing rows refreshed in place, keeping their confirmation verdicts
-     * @param removed   逻辑FK列 rows whose source evidence disappeared from the documents
-     * @param danglingRemoved edges (ANY origin) whose endpoints no longer resolve in the catalog —
-     *                        garbage left by an asset rebuild such as {@code POST /ingest/ddl}
-     *                        re-numbering ids (M-5 smoke finding; hygiene invariant)
+     * @param removed   逻辑FK列 rows whose source evidence disappeared AND that carried no 已确认
+     *                  verdict (physical delete)
+     * @param danglingRemoved edges (ANY origin) whose endpoints no longer resolve in the catalog
+     *                  and carried no 已确认 verdict (physical delete)
+     * @param staleKept       evidence vanished but verdict is 已确认 → quarantined, NOT deleted
+     *                  (conflict_flag raised + trace note; workbench re-review required)
+     * @param danglingKept    endpoint unresolvable but verdict is 已确认 → quarantined likewise
      */
     public record RelationReport(int edges, int resolved, int unresolved, int files,
-                                 int created, int reused, int removed, int danglingRemoved) {
+                                 int created, int reused, int removed, int danglingRemoved,
+                                 int staleKept, int danglingKept) {
         @Override
         public String toString() {
             return "RelationReport{edges=" + edges + ", resolved=" + resolved
                     + ", unresolved=" + unresolved + ", files=" + files
                     + ", created=" + created + ", reused=" + reused + ", removed=" + removed
-                    + ", danglingRemoved=" + danglingRemoved + "}";
+                    + ", danglingRemoved=" + danglingRemoved
+                    + ", staleKept=" + staleKept + ", danglingKept=" + danglingKept + "}";
         }
     }
 
@@ -99,12 +106,23 @@ public class RelationIngestionService {
         }
 
         // C-2 scope guard: only 逻辑FK列 rows are upserted; ER/manual/confirmed verdicts survive.
+        // Identity is NATURAL (review N-2): table NAME + column + document target text — surrogate
+        // ids never enter the key, so asset renumbering can no longer orphan pooled rows.
+        // Polymorphic siblings are NOT keyed by target (① legitimately re-pins to_asset_id on prose
+        // rows; a keyed target would break that symmetry) — see pick(): verdict-aware matching.
+        Map<Long, String> nameById = new HashMap<>();
+        byName.forEach((k, a) -> nameById.put(a.getId(), a.getName().toLowerCase(Locale.ROOT)));
         Map<String, List<MetaRelation>> pool = new HashMap<>();
-        for (MetaRelation r : relRepo.findAll()) {
-            if (ORIGIN_CH2.equals(r.getOrigin())) {
-                pool.computeIfAbsent(edgeKey(r.getFromAssetId(), r.getFromColumn(), r.getTargetRaw()),
-                        k -> new ArrayList<>()).add(r);
+        for (MetaRelation r : relRepo.findAll(org.springframework.data.domain.Sort.by("id"))) {
+            if (!ORIGIN_CH2.equals(r.getOrigin())) {
+                continue;
             }
+            String fromName = r.getFromAssetId() == null ? null : nameById.get(r.getFromAssetId());
+            if (fromName == null) {
+                continue;   // unresolvable endpoint: not poolable, the dangling sweep below owns it
+            }
+            pool.computeIfAbsent(edgeKey(fromName, r.getFromColumn(), r.getTargetRaw()),
+                    k -> new ArrayList<>()).add(r);
         }
 
         List<MetaRelation> created = new ArrayList<>();
@@ -151,14 +169,27 @@ public class RelationIngestionService {
         }
         relRepo.saveAll(created);
 
-        // stale: 逻辑FK列 rows this parse no longer recognises → their doc evidence disappeared
+        // stale: 逻辑FK列 rows this parse no longer recognises → their doc evidence disappeared.
+        // Verdict-aware (review N-3): 已确认 rows are NOT physically deleted — evidence vanishing
+        // must not silently annul a human decision; they are quarantined (conflict_flag + trace
+        // note) for the confirmation workbench instead.
         List<MetaRelation> stale = pool.values().stream().flatMap(List::stream).toList();
-        relRepo.deleteAll(stale);
+        List<MetaRelation> staleDelete = new ArrayList<>();
+        int staleKept = 0;
+        for (MetaRelation r : stale) {
+            if (VERDICT_CONFIRMED.equals(r.getConfirmStatus())) {
+                quarantine(r, "｜文档证据消失待复核");
+                staleKept++;
+            } else {
+                staleDelete.add(r);
+            }
+        }
+        relRepo.deleteAll(staleDelete);
         relRepo.flush();
 
-        // hygiene sweep (M-5 smoke finding): an asset rebuild (POST /ingest/ddl) re-numbers ids and
-        // strands edges of ANY origin — including channel-1 rows the C-2 scope must never touch.
-        // Deleting endpoints that no longer resolve keeps the lineage closure invariant trustworthy.
+        // hygiene sweep: edges whose endpoints do not resolve in the catalog are garbage — with
+        // pinned ids (N-1 fix) this only happens when a table genuinely left the document, and an
+        // 已确认 row in that state is quarantined for review rather than destroyed (same rule as stale).
         Set<Long> liveAssetIds = new HashSet<>();
         byName.values().forEach(a -> liveAssetIds.add(a.getId()));
         List<MetaRelation> dangling = new ArrayList<>();
@@ -169,7 +200,17 @@ public class RelationIngestionService {
                 dangling.add(r);
             }
         }
-        relRepo.deleteAll(dangling);
+        List<MetaRelation> danglingDelete = new ArrayList<>();
+        int danglingKept = 0;
+        for (MetaRelation r : dangling) {
+            if (VERDICT_CONFIRMED.equals(r.getConfirmStatus())) {
+                quarantine(r, "｜端点已不在目录待复核");
+                danglingKept++;
+            } else {
+                danglingDelete.add(r);
+            }
+        }
+        relRepo.deleteAll(danglingDelete);
         relRepo.flush();
 
         // resolved/unresolved recounted from the store in the channel-2 scope, so the report
@@ -185,7 +226,8 @@ public class RelationIngestionService {
             }
         }
         RelationReport report = new RelationReport(edges, resolved2, total2 - resolved2, files,
-                created.size(), reused, stale.size(), dangling.size());
+                created.size(), reused, staleDelete.size(), danglingDelete.size(),
+                staleKept, danglingKept);
         log.info("Relations upserted: {}", report);
         return report;
     }
@@ -201,15 +243,46 @@ public class RelationIngestionService {
         if (to == null && SELF_REF_TEXT.matcher(pr.getTargetRaw()).find()) {
             to = from;
         }
-        String key = edgeKey(from.getId(), pr.getFromColumn(), pr.getTargetRaw());
+        String key = edgeKey(from.getName(), pr.getFromColumn(), pr.getTargetRaw());
         List<MetaRelation> same = pool.get(key);
-        MetaRelation reuse = (same == null || same.isEmpty()) ? null : same.remove(0);
+        MetaRelation reuse = pick(same, to);
         if (reuse == null) {
             created.add(edge(from, pr, to, cross, relPath));
             return true;
         }
         refresh(reuse, from, pr, to, cross, relPath);
         return false;
+    }
+
+    /**
+     * Target-aware pairing of a parsed sibling with a pooled row of the same (from, column,
+     * target-text) identity (review N-3: no blind {@code remove(0)}):
+     * <ul>
+     *   <li>parsed with a concrete target → prefer the pooled row ALREADY pointing there; else an
+     *       unpinned (prose-stage) row may adopt it; if every pooled row points elsewhere the
+     *       document retargeted — never reassign a foreign verdict silently, so create fresh and
+     *       let the mismatched rows fall to the verdict-aware stale sweep;</li>
+     *   <li>parsed as prose (no target) → prefer an unpinned row, otherwise take the first: a
+     *       channel-1-pinned {@code to_asset_id} is legitimate state that refresh never nulls.</li>
+     * </ul>
+     */
+    private static MetaRelation pick(List<MetaRelation> same, MetaAsset to) {
+        if (same == null || same.isEmpty()) {
+            return null;
+        }
+        if (to != null) {
+            for (int i = 0; i < same.size(); i++) {
+                if (to.getId().equals(same.get(i).getToAssetId())) {
+                    return same.remove(i);
+                }
+            }
+        }
+        for (int i = 0; i < same.size(); i++) {
+            if (same.get(i).getToAssetId() == null) {
+                return same.remove(i);
+            }
+        }
+        return to == null ? same.remove(0) : null;
     }
 
     /**
@@ -265,10 +338,25 @@ public class RelationIngestionService {
         return m.find() ? m.group(1) : null;
     }
 
-    /** identity of a channel-2 edge; stable across the channel-1 overlay (S2-3 never rewrites targetRaw). */
-    private static String edgeKey(Long fromId, String fromColumn, String targetRaw) {
-        return fromId + "\u0001" + (fromColumn == null ? "" : fromColumn.toLowerCase(Locale.ROOT))
+    /**
+     * Identity of a channel-2 edge — NATURAL keys only (review N-2): the table NAME (never a
+     * surrogate id, so asset renumbering cannot orphan a pooled row) + FK column + the document's
+     * target text (never rewritten by the channel-1 overlay, S2-3). Polymorphic sibling drift is
+     * handled by {@link #pick}, NOT by keying on the mutable {@code to_asset_id}.
+     */
+    private static String edgeKey(String fromName, String fromColumn, String targetRaw) {
+        return (fromName == null ? "" : fromName.toLowerCase(Locale.ROOT))
+                + "\u0001" + (fromColumn == null ? "" : fromColumn.toLowerCase(Locale.ROOT))
                 + "\u0001" + (targetRaw == null ? "" : targetRaw.trim());
+    }
+
+    /** Verdict-preserving quarantine: keep the row, flag it, annotate the trace (300-char cut). */
+    private void quarantine(MetaRelation r, String traceNote) {
+        r.setConflictFlag(true);
+        String basis = r.getBasisRaw() == null ? "" : r.getBasisRaw();
+        if (!basis.contains(traceNote)) {
+            r.setBasisRaw(cut(basis + traceNote, 300));
+        }
     }
 
     private MetaRelation edge(MetaAsset from, ParsedRelation pr, MetaAsset to, String cross, String doc) {

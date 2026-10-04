@@ -127,7 +127,7 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 实测（H2 与真实 MySQL 8 逐位一致）：`jf_sales_order` 枢纽 **downstream 41 节点/48 边**（深度分布 0:1/1:20/2:6/3:6/4:8，如 `jf_pay_request`/`jf_inventory_frozen_record`/`jf_receivable_*`）、**upstream 15 节点/17 边**（`jf_customer`/`jf_trader`/`jf_settlement_unit`/`jf_brand`…）；`danglingEdges=0`、`truncated=false`（达成退出标准 G3：枢纽正/反向可追溯 + 影响分析）。`mvn test` **72/72**（新增 `LineageQueryTest` 4 例）。
 - 注：CTE 返回行数（MySQL 探针 73）> 唯一节点数（41）——因多路径汇聚，service 按最小深度去重为唯一节点集。
 
-### M-5 整改（评审团 Major）：变更影响清单可导出（M3 退出标准第②项，`mvn test` 82/82）
+### M-5 整改（评审团 Major）：变更影响清单可导出（M3 退出标准第③项，编号按 PLAN §7 准则序；`mvn test` 82/82）
 
 - `LineageNode` 新增 `parentNode`/`viaRelationId`（最短路径树的入边信息，root 为 null）；`LineageService` 采集行时同步维护树父端，并对 H2 把 CTE `parent_node/edge_id` 列统一成字符串的类型差异做容错解析（`toLong`，双方言实测通过）。
 - 新增 `ImpactExportService`：DOWNSTREAM 子图摊平为**影响清单**（每受影响表一行，root 自身不入列），携带深度、传播父表、经由 FK 列、完整影响路径（`root → … → 表`）、基数/证据/置信/出处；序列化为 **CSV（Excel-ready，UTF-8 BOM + RFC4180 转义）/ JSON / YAML**。
@@ -148,6 +148,21 @@ pnpm build      # vue-tsc 类型检查 + 产物构建
 - 读口径（批准项）：POC 期 **GET/HEAD `/api/**` 匿名可读**（目录/血缘/影响清单导出浏览器直开）；生产 IAM 接入时只需翻转这一行 matcher 为 `authenticated()`（变更面已在 `SecurityConfig` 注释里钉死）。
 - 写门禁维持原有粒度：元数据写 ADMIN/STEWARD、摄取 ADMIN、审计 ADMIN、删除 ADMIN；新增 **OPTIONS 预放行**（CORS 预检不带 token 必须畅通）。
 - `SecurityHardeningTest` 5 例（匿名读 200/匿名写 403/白名单外 fail-closed/preflight 无 token 200/admin JWT 写 200）；真实 MySQL 8 HTTP 层全矩阵实测：匿名 GET 200、匿名 POST 403、`/actuator/health` 与 `/foo` 403、admin JWT POST 200；基线 ②413/①74/总487、悬空=0、血缘 41/48 零侵蚀。
+
+> **[二轮评审勘误 2026-10-04，见下 P0 根因批]** 上方两处口径失实：
+> ① 卫生批段的 `mvn test 85/85` 系当时记录偏小（评审团同提交磁盘复数 @Test 为 87）；历史验证数字一律以对应提交 surefire 复跑为准，当前 HEAD 以最新全量为准。
+> ② “悬空=0/零侵蚀”仅覆盖了 `meta_relation` 一张表：实库 `model_pdm` 66/66、`model_ldm` 66/66 的 `asset_id` 早已因历史 `/ddl` 全删重建变成死引用（M2 已验收映射被侵蚀而未披露）。已由 P0 批根治+实库修复归零。
+
+### P0 根因批：代理键稳定性（二轮评审 N-1/N-2/N-3，`mvn test` 100/100）
+
+二轮专家评审团对 M3 整改线（`157405f..02df0ce`）复审新增 2 项 Critical，本批全部封堵：
+
+- **N-1/N-2 根因——`/ingest/ddl` 就地 upsert、id 永不重编号**（`DdlIngestionService` 重写）：旧 POC 行为全删重建使资产/列重新编号，把 M2 已验收的 `model_pdm/model_ldm` 映射、术语绑定和关系判决全部变成死指针/归零。新行为按表名/列名配对：复用行只刷新 DDL 派生结构字段（治理字段 domain/认证/负责人天然保全），文档消失的表/列连带淘汰。`IngestReport` 新增 8 个差量计数（created/updated/unchanged/evicted ×2）作为侵蚀预警。
+- **dryRun + 审计**：`POST /api/ingest/ddl?dryRun=true` 返回完整影响预览（写零落盘，含 meta_source）；每次真实重灌入 `sys_audit_log`（INGEST_DDL / INGEST_DDL_PREVIEW）。
+- **N-2 双保险——edgeKey 自然化**（`RelationIngestionService`）：身份键由 `(fromAssetId,…)` 改为 `(表名, 列名, 文档目标原文)`，代理主键不再入 key；多态 A/B 兄弟不再拿可变状态进 key，而是由新增的 `pick()` 目标感知配对（精确命中优先、散文可接未钉行、全不匹配则新建+旧行走隔离——绝不静默改指已确认行的目标）。
+- **N-3 隔离态——判决不可逆消失**：stale（证据消失）/dangling（端点不可解）中的 `已确认` 行不再物理删，改为隔离（`conflict_flag=true` + basis 追记“待复核”），`RelationReport` 新增 `staleKept/danglingKept`；待确认/驳回行仍物理删。
+- **新门测试**：`DdlReingestStabilityTest` 4 例（重灌 id 全钉住/纯 no-op、dryRun 零写入、治理字段存活、source 指针静默刷新）；`ReferentialIntegrityTest` 2 例（**五表全量引用零悬空不变式**：rel×2/column/ldm/pdm/term_ref×2；及 N-1 字面回归：先建 pdm/ldm/术语绑定→重灌→仍指同一行）；`RelationReingestTest` +2 例（已确认 stale 行隔离、多态兄弟 id→target 映射跨重灌逐项相等）。
+- **真实 MySQL 8 冒烟（就地升级，无 drop）**：dryRun 预览全 unchanged且零落盘→真跑 `/ddl` 报 1322/16591 全 unchanged、id 区间 2645–3966 分毫不动、审计入库；置判决 id=1000=已确认 → `/ddl`+`/relations` 链后存活（旧代码必丢）；`/relations` 零 churn（created=0/reused=413/removed=0/kept=0）；`POST /api/model/rebuild` 修复存量断链——**pdm/ldm/term_ref/column/rel 悬空全部 66/66→0**；基线 ②413/①74/总487、血缘 down 41/48·up 15/17 零侵蚀，impact depth6 经节点数 41−1 自洽复核。
 
 ## 关键设计口径（对齐评审结论）
 
