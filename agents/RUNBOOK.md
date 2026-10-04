@@ -1,0 +1,280 @@
+# agents/RUNBOOK.md — GraphRAG 落地里程碑台账（编排者交付）
+
+> 编排对象：`er-model/graphrag/design-plan.md`（**v2**）+ `er-model/graphrag/design-plan-revision.md`（R-0…R-10）
+> 分支：`chore/rag`，基点 `4a5485a`（已提交 subagent 定义至 `c05203a`）；不合并 `master`
+> 本文件由 `rag-orchestrator` 独占写入。口径纪律：**验收门全部引用 design-plan v2 既有量化条款**；方案标 `[待确认]` 的数值原样保留，不新设阈值。
+> 台账内所有计数/符号均为**编排者对源文件的 grep 实测值**（命令见 §A），非照抄约定值。
+
+---
+
+## 0. 编排总则
+
+1. **串行委派**：`M0 → ⟦gate+audit⟧ → M1 → ⟦gate+audit⟧ → M2 → ⟦gate+audit⟧ → M3 → ⟦gate+audit⟧ → M4 → ⟦gate+audit⟧`。
+   MVP 主干为 M0–M2（design-plan §8.1「MVP 建议」：确定性检索 + 引用级血缘先交付），M3 为分析增量，M4 后置。
+2. **编排不执行**：本 agent 不写业务/解析/图谱代码，不自行触发子代理运行时；任务卡交主线程逐一委派对应执行专家。
+3. **每里程碑两道复核（横切）**：`rag-eval-gate`（数量等式/黄金集/有出处率/多跳预算/社区对照/边界守恒）出具 `graphrag/reports/eval-M{n}.md`；`rag-scope-auditor`（只读）出具 `graphrag/reports/audit-M{n}.md`。
+   **过门定义**：eval-gate 全项 PASS **且** scope-auditor 无 P0。任一 FAIL = 不过门 → 按该卡「回退规则」处置，不得进入下一里程碑。
+4. **契约冻结**：`graphrag/spec/` 过门即冻结；下游若发现契约缺口/冲突，**不得自改上游文件**，向编排者提出 → 回退 M0 出 amendment → 重过 eval-gate。
+5. **单向摄取**：`er-model/*` 与 `test_erp.sql` 是输入资产，本轮只读、不反向改写（design-plan §7.1）。
+6. **超本期范围（遇此一律标注"超本期范围"，不得承诺）**：
+   - ❌ 字段级**变换/ETL 数据流**血缘（`sum(order.amount)→invoice.total` 类计算链）——§2.3 / R-9。
+   - ❌ **指标语义层**（KPI/计算口径/正式业务术语表）——§1.4 / R-10，`[待确认]`。
+   - ❌ 一切把推断关系表述为"物理外键/权威约束"的产出：全库 **0 条 FOREIGN KEY/CONSTRAINT**（编排者实测 `grep -ciE 'FOREIGN KEY' test_erp.sql = 0`，`ADD CONSTRAINT = 0`；§1 关键结论、§5.1）。
+
+### 0.1 状态一览
+
+| ID | 里程碑 | 执行专家 | 状态 | 过门凭证 |
+|---|---|---|---|---|
+| T-00 | 前置编排：任务分解与本台账 | rag-orchestrator | **完成（本次提交）** | 本文件 |
+| M0 | 范围与 Schema 契约定稿 | rag-schema-architect | 未开始 | — |
+| M1 | L0 图装载 + L1 确定性检索 | rag-knowledge-loader | 未开始 | — |
+| M2 | 字段级·引用/结构级血缘 | rag-lineage-builder | 未开始 | — |
+| M3 | L2 社区/全局分析层 | rag-community-analyst | 未开始 | — |
+| M4 | 结构语义层 + 可选 NL 前端 | rag-semantic-nl-frontend | 未开始 | — |
+| G·A | 横切门禁 + 范围审计 | rag-eval-gate / rag-scope-auditor | 就绪（随里程碑触发） | `graphrag/reports/` |
+
+---
+
+## 1. 实施约定（主线程已定；全体执行专家必须遵守，避免栈不一致）
+
+| # | 约定 | 说明与实测注记 |
+|---|---|---|
+| C-1 | 语言/运行时 = **Python 3**，macOS 本地可跑 | 编排者实测本机 `Python 3.14.6`；无构建系统，仓库为纯文档工程（`Agents.md` §1/§6） |
+| C-2 | MVP 栈：确定性核心 | `test_erp.sql` / `er-model/*` 解析 → **内存/JSON 属性图 + SQLite FTS5**（BM25/全文）；社区检测用 `python-louvain`（Louvain）或 `networkx` `greedy_modularity_communities` |
+| C-2a | ├ FTS5 可用性 | 编排者实测：Python 内置 `sqlite3` → SQLite **3.50.4**，`CREATE VIRTUAL TABLE … USING fts5` 通过；`porter unicode61` 与 `trigram` tokenizer 均可建表 |
+| C-2b | └ 依赖现状 | `networkx 3.7` **已安装**；`python-louvain`（`import community`）**未安装**。M3 开工前须确认依赖安装策略（`pip install python-louvain` 或退化为 greedy_modularity）→ 记为 `[待确认]`，不得默认已具备 |
+| C-3 | 向量库 / LLM / 重型图库 = **按需后置、非默认** | 依 design-plan §1.2/§4.3/R-0/R-8：LLM 抽取层在本资产冗余可省；仅在 spec 中留接口 + `[待确认]` 选型候选（§8.3-3），不得写入既定引擎 |
+| C-4 | 实现代码目录 = `graphrag/` | 与文档目录 `er-model/graphrag/`、以及被排除的 `dam-app/` 物理隔离 |
+| C-5 | 唯一输入 = `er-model/*` + `test_erp.sql` + `Agents.md`/`skills` | 依 `Agents.md` §0.1/§0.2；**严禁**引入/对齐 `dam-app`/`dam_meta`/`PLAN.md`（含其 `asset_urn` 等身份模型）。`table_id` 为本方案自设 `[待确认]`（§3.3-1 / R-1） |
+| C-6 | 全库 0 外键 → 所有关系/血缘为**推断** | 每条边 `is_inferred=true` + 五级证据 + 置信度；回答须显式声明"逆向推断、非物理外键"（§2.3/§5.1/§5.2） |
+| C-7 | 数量等式（编排者实测复核通过，见 §A） | 图内可遍历主语料 = **A 级 349**（含 OT 17）；登记全量 = **1322** = 349+853+120；入图 Issue = **05 实测 27**；05 核心关系线 = **实测 33**；`||--||`/`||--|{` 在 `01-ER图` **实测 0 出现** |
+| C-8 | 分支/提交红线 | 各执行专家仅在其里程碑**过门后**提交自己负责路径到 `chore/rag`；禁合并/推送 `master`、禁 `--force`/`--no-verify`/`reset --hard`、**不自动 push**、无变更不空提交、禁 `git add -A` |
+| C-9 | 临时产物 | `Agents.md` §7.5 的 `_*` gitignore 口径**仅覆盖根目录与 `er-model/`**（`gitignore` 为 `/_*`、`er-model/_*`，非全局）。`graphrag/**/_*` 不会被自动忽略：需新增忽略项者向编排者提出，由编排者单点改 `.gitignore`（见 §4 路径表） |
+| C-10 | 派生数据入库策略 | 生成的图快照/SQLite 文件默认**不入库**，以"可确定性重建的脚本 + 校验报告"为交付；如需入库快照以便评审，由 M0 在 `spec/` 中定阈值 → `[待确认]`（编排者提出，勿由执行专家自行决定） |
+
+---
+
+## 2. 里程碑任务卡
+
+### M0 · 范围与 Schema 契约定稿 — `rag-schema-architect`
+
+- **目标与范围**：冻结输入与图契约，交付下游共享的"数据契约 + 归一映射 + 实测勘察表 + 评测构造规范 + 选型候选"。锚点：design-plan §0、§1.2、§2.1、§2.3、§3.1–§3.3、§4.1、§5.1、§7.1、§8.1(M0 行)、§8.3；修订稿 R-0/R-3a/R-3b/R-4/R-5/R-6/R-8/R-10。
+- **上游依赖**：T-00（本台账）；无前置里程碑。
+- **输入资产**：`er-model/00`、`er-model/01-ER图/*`（20 篇）、`er-model/03-逻辑数据模型/*`（20 篇）、`er-model/04`、`er-model/05`、`test_erp.sql`、`Agents.md`、`skills/mysql-ddl-data-modeling/`。
+- **产出物路径**（`graphrag/spec/`，7 份）：`schema.md`、`header-normalization.md`、`relation-symbol-census.md`、`file-domain-map.md`、`evidence-confidence-map.md`、`eval-baseline.md`、`stack-options.md`。
+- **验收门（逐条可测）**：
+  1. **表头归一映射**覆盖 `03` 全部 20 文件的实测变体，且枚举数=grep 实测。编排者预检：`03` 目录实测 **10 种**表头签名，最高三种为 `|字段|类型|可空|默认|键|含义|`×103、`|字段名|类型|可空|默认值|键|含义/关联|`×60、`|字段|类型|可空|默认|主/外键线索|含义|关联|`×59；含 6 列/7 列/无"默认"列等形态（§4.1「≥5 种变体」的实测细化，R-3b）。归一目标列：字段/类型/可空/默认/键-线索/含义/关联（"关联"可内联于键列 `FK[目标·依据]`）。
+  2. **关系符变体勘察表**与实测一致并**显式列出 0 出现符号**。编排者实测 `01-ER图/*` 出现次数：`||--o{` 321、`||..o{` 92、`||--o|` 11、`||..o|` 5、`|o--o{` 3、`}o--o|` 3、`}o--o{` 2、`}o..o{` 1、`}o..o|` 1；**`||--||` = 0、`||--|{` = 0**（§4.1）。⚠ 冲突项须在勘察表内裁决并留痕：`Agents.md` §4.1 文字描述"`1:1` 用 `||--||`、强制多行 `||--|{`"与实测 0 出现不一致 → **解析正则一律以实测勘察表为准，不得依 `Agents.md` 约定写法**。
+  3. **文件名↔域号映射表**条目 = 实测文件数（`01-ER图` 20、`03-逻辑数据模型` 20；键为 D01–D18 + OT + B级），且与 `00` 第四节逐域表数一致（18 域小计 = 332：18+21+19+33+13+15+23+27+31+24+21+11+16+34+6+10+6+4 = 332 ✓，另 OT 17）。
+  4. **五级证据→`evidence_level`→置信度区间**映射齐备（§5.1 五级 + §5.2 默认阈值 `confidence ≥ 0.45` + `unconfirmed` 默认过滤开关）；区间数值保留 `[待确认]`（§5.1 标注为初设，§8.3-1）。
+  5. **schema**：6 类节点（Domain/Table/Column/Concept/Issue/EvidenceSrc）+ §3.2 全部边类型；`RELATES_TO` 四要素（cardinality/evidence_level/confidence/source_ref）+ 自关联 `direction=self` + 多态 `polymorphic/discriminant`；`Concept` 标 `layer:"structural"`；所有边 `is_inferred=true`；复合证据 `[命名推断+索引]` 取高并记 `evidence_tags`、`external_reference=true` 不建本库边（§5.1）。
+  6. **EvidenceSrc** 稳定语义锚 `{file, section, table, column, quote_hash, line_hint?}`；行号标"尽力字段"并注明口径差实测：`00` 记 **26,998** 行 vs `wc -l` **28,339** 行（R-6，`Agents.md` §9.2）。
+  7. **黄金集构造规范**覆盖六类查询（UC1–UC6，§1.4）+ **确定性基线测法**（R-5：先测"关键词 + 图遍历 + 社区摘要"命中率，再决定是否引入向量/LLM）；命中率目标 `Top-3 ≥ 90%` 与 P95 时延阈值原样标 `[待确认]`（§1.5）。
+  8. **选型候选**：图库/向量库/LLM 仅出对比与结论 `[待确认]`，未选定引擎不得写成事实（§8.3-3；C-3）。
+  9. 分层表述与 §1.2/R-0/R-8 一致：**GraphRAG 抽取层冗余可省，社区/全局层为真实增量**；`stack-options.md` 与 `schema.md` 的 MVP 落地形态须与 C-2（JSON 属性图 + SQLite FTS5）不冲突。
+  10. `rag-scope-auditor`：`spec/` 全文无 `dam-app`/`dam_meta`/`PLAN.md` 依据（grep 取证）；无指标层/ETL 血缘承诺。
+- **回退规则**：任一实测数字与源文件不符或存在"照抄约定未回读"→ 退 M0 重取证（§5.1 审计维度 3）；契约缺项/自相矛盾 → 不得进入 M1；勘察表与实物冲突未裁决 → 阻断（承 §4.4"任一断言失败 → 阻断入库并报告，不交付"精神）。
+- **状态**：未开始
+
+### M1 · L0 属性图装载 + L1 确定性检索 — `rag-knowledge-loader`
+
+- **目标与范围**：确定性解析 `er-model/*` + `test_erp.sql` 结构事实，装载 A 级完整入图、B/C 轻量登记，建 BM25/全文 + 邻接表，交付 UC1/UC2/UC3 + 表级推断血缘遍历。锚点：§2.2、§3.1–§3.3、§4.1、§4.4、§5.2、§6(UC1–UC3/UC4 表级)、§7.1、§8.1(M1)；R-3a/R-3b/R-4/R-6。
+- **上游依赖**：M0 全部 `spec/`（`schema/header-normalization/relation-symbol-census/file-domain-map/evidence-confidence-map`）+ 过门。
+- **输入资产**：同 M0（`skills/.../scripts/` 仅复用普查/归域**思路**；脚本为 PS 5.1/Windows，macOS 需 `pwsh` → `[待确认]`，§4.1 注/R5）。
+- **产出物路径**：`graphrag/ingest/`（解析器）、`graphrag/store/`（JSON 属性图 + SQLite FTS5 落地）、`graphrag/search/`（L1 检索与 1 跳/多跳遍历）、`graphrag/data/l0_*`、`graphrag/out/meta/`（**JSON/YAML 机读元数据导出，§7.1/R-4 前置核心交付**）。
+- **验收门**：
+  1. **数量等式闭合（§4.4，任一不闭合即阻断入库、不交付）**：图内可遍历主语料 = A 级 **349**（含 OT 17）；登记全量 = **1322**（A349 + B853 + C120）；每域表数 = `00` 第四节声明值；入图 **Issue = 27**（按 `### A..G` 列表项实测：A3+B4+C4+D5+E3+F4+G4）；关系边两端存在、**无悬挂边**（目标为 `[待确认]` 者除外）。
+  2. **前缀归级不得武断（编排者实测口径）**：DDL `CREATE TABLE` 实测 **1322**；其中 `jf_*` 名串 **334**、`lcap_*` **501**、`N{hex}_/P{hex}_` **403**（=275 Quartz + 128 Activiti）、`test_` **3**、含 `_bak_` **117**（lcap 51 + jf 2 + 无前缀 64，`00` 终验行）。→ 分级须**先按 C 级规则（`_bak_` 时戳 / `test_` 前缀）剔除，再按前缀归 A/B**；若把 2 张 `jf_*_bak_` 或 51 张 `lcap_*_bak_` 计入 A/B 即判 FAIL。
+  3. **结构事实以 `test_erp.sql` 为最终仲裁**（§2.1 冲突消解）：逐表列数与 DDL 交叉校验；`03` 审计四件套等**合并行须拆回原子列**（§3.3-2 / R7）；无 PK 表标记与 DDL 一致（实测 `PRIMARY KEY` 声明 1311 → **11 张无 PK**，`00` 第一节）。
+  4. **关系解析**：正则取自 M0 `relation-symbol-census.md` 实测变体；证据以描述文本 `[证据]` 标签为准（实线/虚线不对应证据强度，§4.1 注）；跨域桩 `[跨域·Dxx]` 不重复建节点、边指向定义域规范节点（§2.2）。
+  5. **L1 检索可用**：UC1 查表 / UC2 查字段（含反向"哪个表有 `sales_order_id`"）/ UC3 查关系（附 `evidence_level`+confidence+来源文件行）；默认仅召回 `confidence ≥ 0.45`（§5.2-1）；多跳默认 ≤3 跳 `[待确认]`（§6）。
+  6. **机读导出**：`out/meta/` 稳定 schema 可被 M2/M3/M4 只读消费；答案侧「有出处率」100%（§1.5）——抽查断言每条 `RELATES_TO` 有 `SUPPORTED_BY`。
+  7. 黄金集确定性基线首测（`spec/eval-baseline.md` 测法），命中率对齐并记录，阈值保持 `[待确认]`（§1.5）。
+- **回退规则**：数量等式不闭合 → 阻断并回退 loader 修复解析（§4.4）；列数与 DDL 不符 → 回退 §3.3-2 拆行逻辑；若发现 `spec/` 契约缺口 → 走 §0.4 回退 M0 amendment 并重过 gate，**不得自改 `graphrag/spec/`**。
+- **状态**：未开始
+
+### M2 · 字段级·引用/结构级血缘 — `rag-lineage-builder`
+
+- **目标与范围**：在 M1 图上由 DDL `_id`/`_code`、`INDEX`/`UNIQUE` 佐证、`COMMENT` 明示生成 `REFERENCES` 列→列边 + 反向影响分析 + 待确认队列。**变换/ETL 数据流级血缘：超本期范围**（§2.3 / R-9）。锚点：§2.3、§3.2、§4.1、§5.1–§5.2、§6(UC4/UC5)、§8.1(M2)。
+- **上游依赖**：M1 过门（Table/Column/RELATES_TO 已在图内）+ M0 `evidence-confidence-map.md`。
+- **输入资产**：`test_erp.sql`（列/索引/注释结构事实）、`er-model/01-ER图/*`、`er-model/03-逻辑数据模型/*`、`er-model/05`（A-3/B-4 高危项）、M1 `out/meta/`。
+- **产出物路径**：`graphrag/lineage/`（引用判定与 BFS/DFS 反向可达）、`graphrag/data/references_*`、`graphrag/out/lineage/`（血缘清单 + 影响面导出）、`graphrag/data/review_queue.json`（待确认队列，本 agent 唯一持有者）。
+- **验收门**：
+  1. **引用边两端可解析**：每条 `REFERENCES` 的源列与目标列均存在于图中；悬挂列边 = 0（除目标 `[待确认]` 者，且须在队列内）。
+  2. 逐边携带 `evidence_level` + `confidence`，默认过滤 `≥0.45`；全库 0 FK → 导出与回答文本显式声明"血缘为逆向推断，非物理外键；不含变换/ETL 级"（§2.3、C-6）。
+  3. **高危推断处置**（§5.2-4 / §8.2 R4 / §8.3-5）：多态外键（`flow_change_record.related_order_id` 按 `order_type`）→ 多候选边共享 `unconfirmed` + `polymorphic=true, discriminant`；同名列异指向（`05` B-4）**不得**武断连到"最近"表 → 强制进队列；`external_reference=true`（D15 `crm_complaint_code` 等→外部系统，`00` 复核批①）不建本库边。
+  4. **UC4 影响 / UC5 血缘**：给定表/字段返回下游清单与正向/反向路径（以 `jf_sales_order` 为枢纽样例），深度默认 ≤3 跳 `[待确认]`，超限截断可复现（§6）；按置信度加权剪枝，避免低置信短路连边（§5.2-2）。
+  5. 无路径/无节点时答案须为"文档未记载/待确认"，**拒绝臆造兜底**（§6）。
+- **回退规则**：悬挂列边或两端不可解析 → 阻断回退 M2 生成逻辑；若产物出现变换/ETL 血缘 → 判边界越位（P0），删除并标注超范围；若需真实数据流血缘 → 停止该需求，回报"须放宽输入到 BI/ETL/作业日志后重估"（§8.3-7）。
+- **状态**：未开始
+
+### M3 · L2 GraphRAG 社区/全局分析层 — `rag-community-analyst`
+
+- **目标与范围**：在社区检测 + 分层社区摘要 + 全局 map-reduce 上取得确定性遍历给不出的增量：全局枢纽/域间耦合/跨域传导、涌现跨域簇、UC6 按域分析（§1.2 L2、R-0/R-8）。
+- **上游依赖**：M1 图 + M2 `REFERENCES` 边（供置信过滤）+ M0 `eval-baseline.md`、`stack-options.md`。
+- **输入资产**：M1/M2 图与导出、`er-model/00` 第四节（18 域手工基线）、`er-model/05`（三分类/子图/B-4）。
+- **产出物路径**：`graphrag/community/`（社区检测 + 分层摘要）、`graphrag/out/community/`（社区摘要、全局问答报告、涌现簇-18 域对照表；其自身不确定项写 `out/community/uncertain.md`，**不改 M2 的 `review_queue.json`**）。
+- **验收门**：
+  1. **社区检测输入边仅限 `confidence ≥ 0.45`**（§8.1 M3 行、§5.2-1）：须给出可复算断言——进入社区算法的边集合中低置信边数 = 0，并记录被排除边计数。
+  2. **涌现簇 vs `00` 手工 18 域基线对照**：量化一致/差异（对齐率、NMI 或簇映射表等），差异簇须可回溯解释（度数中心性隐藏 hub、`05` B-4 同名异指向造成的假耦合团）；否则降权或入待确认。**涌现簇不得覆盖 18 域的权威分组**（§8.1 M3、`rag-community-analyst` 约束）。
+  3. 分层社区摘要 + 全局 map-reduce 结论中每个实体/关系/路径可回溯图节点与 `er-model` 出处；LLM 摘要**不得新建确定性来源没有的表/字段/关系**，无法定位者强制 `[待确认]`（§4.2 / R6）。
+  4. UC6 按域问答达 `spec/eval-baseline.md` 定义的黄金集基线（阈值 `[待确认]`）、可回溯。
+  5. 依赖与选型：Louvain/Leiden 实现（C-2b 实测 `python-louvain` 未安装 / `networkx 3.7` 已装）须在交付中写明实际所用；GDS 类图库能力缺口标 `[待确认]`，不得预设。
+- **回退规则**：未做置信过滤即跑社区 → 判不过门重跑；涌现簇无解释 → 降级为"对照观察"而非发现物；全局摘要出现无出处实体 → 回退 §4.2 硬约束重做；社区层若把结论建立在 `dam_*`/外部平台 → P0 阻断。
+- **状态**：未开始
+
+### M4 · 结构语义层 + 可选 NL 编排前端（L3）— `rag-semantic-nl-frontend`
+
+- **目标与范围**：结构语义（域=语义分区、`05` 三分类=实体类型、字段含义←DDL COMMENT/`03` 含义列、D14 字典=枚举语义）+ 可选 AgenticRAG NL→结构化查询翻译。**指标语义层（KPI/术语表）：超本期范围 `[待确认]`**（§1.4 / R-10）。
+- **上游依赖**：M1 检索 + M2 引用血缘 + M3 社区/全局（NL 前端仅编排这三层）+ M0 `spec/schema.md`（`Concept.layer="structural"`）。
+- **输入资产**：`er-model/05` 第二节三分类种子、`er-model/03`（含 D14 商品属性与基础字典域）、`test_erp.sql` COMMENT、M1 `out/meta/`。
+- **产出物路径**：`graphrag/semantic/`（语义索引与 `REALIZED_BY` 绑定）、`graphrag/nl/`（可选 NL 编排）、`graphrag/out/semantic/`。
+- **验收门**：
+  1. 语义元素全部限定四类来源（§1.4/R-10），每项可回溯 `05` 三分类 / DDL COMMENT / 命名，无法定位者 `[待确认]`；`REALIZED_BY` 仅用种子 + 可回溯者，不得新建来源外实体（§3.2、§4.2）。
+  2. **指标语义层边界**：交付文本显式声明"本期为结构语义层，不含 KPI/计算口径/正式术语表"，遇此类问题回答"需放宽输入，超本期范围 `[待确认]`"（§8.3-7）。
+  3. **NL 前端为可选层**：六类查询（UC1–UC6）NL 入口必须落到 L1/L2 的**结构化调用**，不绕过置信过滤直连低置信边、不生成未 grounding 关系（§1.3-4、§6 拒绝臆造兜底、R-5）；默认由 L1/L2 直接作答。
+  4. 黄金集端到端回归（M0 构造规范 + eval-gate 持有的题目）：Top-3 命中对齐 `[待确认]` 阈值并记录实测值；关系类回答有出处率 100%（§1.5）。
+  5. 时延实测并记录：单跳 P95 / 多跳 P95 对照 §1.5 阈值（`<2s`/`<8s`，方案标 `[待确认]` → 报告须注明"阈值待业务方确认"）。
+- **回退规则**：NL 层臆造关系/绕过过滤 → 收回 NL 层，仅交付结构化 API（R-5 定位降格）；语义绑定无出处 → 降级 `[待确认]`；若被要求做指标层/ETL 血缘 → 判边界越位并停止该项，标注超范围。
+- **状态**：未开始
+
+---
+
+## 3. 横切复核：每里程碑后两道门
+
+### 3.1 `rag-eval-gate`（门禁，产出 `graphrag/reports/eval-M{n}.md`，自行提交该报告）
+
+| 校验项 | 依据（design-plan v2） | 触发里程碑 | FAIL 处置 |
+|---|---|---|---|
+| 数量等式：可遍历主语料=A349（含 OT17）/ 登记全量 1322=349+853+120 / 每域表数=`00` 声明值 / Issue=27 / 边无悬挂（`[待确认]` 目标除外）/ 前缀归级含 `_bak_` 剔除 | §4.4、§2.2、§8.1(M1)、`Agents.md` §7.3 | M1（M2–M4 回归复跑） | 阻断入库，不交付；退 loader |
+| 有出处率：关系类回答 100% 可回溯 `er-model/*` 文件+节/行；无证据断言全部显式标注 | §1.5、§1.3-1、§3.3-4、R-6 | M1/M2/M3/M4 | 不过门；补 `SUPPORTED_BY` |
+| 检索质量：黄金集 Top-3 命中率对齐 M0 `eval-baseline.md`（阈值 `[待确认]`，不擅自设标） | §1.5、§8.1(M3/M4)、R-5 | M1 基线 / M3 / M4 | 记实测值；未定阈值不得判"达标" |
+| 多跳预算：血缘/影响默认 ≤3 跳 `[待确认]`，超限截断可复现 | §6、§8.1(M2) | M2/M4 | 重跑遍历器 |
+| 社区对照：输入边均 `confidence ≥ 0.45`；涌现簇 vs 18 域差异有解释 | §8.1(M3)、§5.2、R-0 | M3 | 无过滤即不过门 |
+| 范围边界：未混入变换/ETL 级血缘、未混入指标语义层；向量/LLM 未被当默认底座 | §2.3、§1.4、§4.3、R-9/R-10 | 全部 | P0 阻断 |
+| 引用完整性：`REFERENCES` 两端可解析；多态/同名异指向/external 处置正确 | §3.2、§5.2-4、§8.2 R4 | M2 | 回退队列化 |
+
+硬规则：**任一 FAIL → 整体判"不过门"**，回退建议给编排者；所有计数以 grep/脚本实测，禁沿用产物自报值。
+
+### 3.2 `rag-scope-auditor`（只读审计，产出 `graphrag/reports/audit-M{n}.md`，**不提交**，由编排者代为提交）
+
+| 维度 | 判级 | 要点 |
+|---|---|---|
+| Scope violation | **P0** | 产物/代码/配置/结论引用或对齐 `dam-app`/`dam_meta`/`PLAN.md`（含 `asset_urn`、M5.4/M8.1 类外部模型） |
+| 输入越界 | P0/P1 | 使用 `er-model/*` + `test_erp.sql` + `Agents.md`/`skills` 之外的输入源 |
+| 取证真实性 | **P0/P1** | 计数/符号变体/条数须与源文件实测一致（基准见 §A：Issue=27、05 关系线=33、`||--||`/`||--|{`=0、CREATE TABLE=1322、FK=0、行数 26998↔28339）；有无"照抄约定未回读" |
+| 推断标注 | P0/P1 | 关系/血缘逐条带五级证据+置信度并声明"推断、非物理外键"；0 外键不得被表述为约束 |
+| 边界守恒 | P1 | ETL 血缘/指标层混入而未标注 |
+| 分支纪律 | P1 | 是否在 `chore/rag`、基点 `4a5485a`，有无擅自合并 `master` |
+
+**P0 存在即不过门**（即使 eval-gate 全 PASS）。
+
+---
+
+## 4. 负责路径与提交范围（单一写入者，避免多 agent 抢同一文件）
+
+| 路径 | 唯一写入者 | 其他人权限 | 提交者 / 提交信息 |
+|---|---|---|---|
+| `agents/RUNBOOK.md`（本文件） | rag-orchestrator | 只读 | orchestrator：`docs(rag): RUNBOOK …` |
+| `agents/*.md`（subagent 定义） | orchestrator（经人工确认） | 只读 | orchestrator：`chore(rag): …` |
+| `.gitignore`、`graphrag/README.md`（目录索引，可选） | **orchestrator（单点）** | 只读；需新增忽略项向编排者提出（C-9） | orchestrator |
+| `er-model/**`、`test_erp.sql`、`Agents.md`、`skills/**` | 无人（输入资产，本轮不改写） | **全体只读**（§7.1 单向摄取） | 不适用 |
+| `graphrag/spec/**` | rag-schema-architect | 全体只读（契约） | loader 自提：`docs(rag): M0 契约与映射定稿（n 份）` |
+| `graphrag/ingest/**`、`graphrag/store/**`、`graphrag/search/**` | rag-knowledge-loader | 只读 | loader 自提：`feat(rag): M1 图装载与 L1 检索（A级349，n 边）` |
+| `graphrag/data/l0_*`、`graphrag/out/meta/**` | rag-knowledge-loader | 只读 | 同上（入库策略见 C-10） |
+| `graphrag/lineage/**`、`graphrag/data/references_*`、`graphrag/data/review_queue.json`、`graphrag/out/lineage/**` | rag-lineage-builder | 只读（队列只追加，由本 agent 持有） | lineage 自提：`feat(rag): M2 字段级引用血缘（n 边，含待确认队列）` |
+| `graphrag/community/**`、`graphrag/out/community/**` | rag-community-analyst | 只读 | community 自提：`feat(rag): M3 社区/全局分析层（n 社区）` |
+| `graphrag/semantic/**`、`graphrag/nl/**`、`graphrag/out/semantic/**` | rag-semantic-nl-frontend | 只读 | frontend 自提：`feat(rag): M4 结构语义层与 NL 编排前端` |
+| `graphrag/eval/**`（评测 harness + `golden/` 题目） | **rag-eval-gate** | 执行专家**只读**（禁改题目与阈值，避免"考生自己出题"） | eval-gate 自提（仅其报告/harness） |
+| `graphrag/reports/eval-M{n}.md` | rag-eval-gate | 只读 | eval-gate 自提：`test(rag): M{n} 验收报告（PASS/FAIL）` |
+| `graphrag/reports/audit-M{n}.md` | rag-scope-auditor 生成文本（**不执行提交**） | 只读 | **orchestrator 代提**：`docs(rag): M{n} 范围与取证审计结论` |
+
+冲突规避规则：
+1. 同一文件不得双写；跨里程碑复用＝**读上游产物、写自己目录**。
+2. 执行专家不得 `git add -A`、不得提交他人的路径、不得提交被 gitignore 的 `_*` 中间产物（C-9）。
+3. 需改上游契约/题目/阈值 → 提编排者 → 回退对应里程碑出修订并重过 eval-gate → 台账更新状态后再提交。
+4. 提交时序：执行专家自提交付 → eval-gate 自提报告 → orchestrator 提审计与台账状态；三者均只在**过门后**发生（T-00 台账本身除外，无需过门）。
+
+---
+
+## 5. 风险登记（源自 design-plan §8.2，叠加本次实测新增项）
+
+| ID | 风险 | 归属里程碑 | 缓解（方案内既有） |
+|---|---|---|---|
+| R1 | 0 外键下低证据边被当事实 → 假血缘 | M1/M2 | 置信阈值 + grounding + 拒绝臆造兜底（§5/§6） |
+| R2 | Markdown 脆弱依赖 | M0/M1 | 机读 JSON/YAML 导出前置为核心交付（§7.1/R-4） |
+| R3 | 1322 表规模下 B/C 节点爆炸淹没查询 | M1 | 族归约 + 影子节点默认排除（§2.2） |
+| R4 | 同名异指向 / 多态外键误连 | M2 | 强制待确认队列 + `discriminant` 分支（§5.2-4） |
+| R5 | `.ps1` 面向 Win/PS5.1，本机 macOS | M1 | `pwsh` 或跨平台重写 `[待确认]`；C-1 已定 Python 为主干 → **脚本仅复用思路** |
+| R6 | LLM 幻觉新建实体/关系 | M3/M4 | §4.2 硬约束 + 回填出处 |
+| R7 | `03` 合并行未拆 → 列数与 DDL 不符 | M1 | 拆回原子列 + `test_erp.sql` 列数交叉校验（§3.3-2） |
+| R8 | 外部平台被误引为依据 | 全部 | §0/§7.3 + scope-auditor P0 |
+| **N-1（实测新增）** | `Agents.md` §4.1 描述的 `||--||`/`||--|{` 在 `01-ER图` 实测 **0 出现**；`Agents.md` §4.2 称 `03` 为"固定列"，实测 **10 种表头签名**；`Agents.md` §4.3 与 `00` 称 A–G "30 条"，实测 `05` **27 条** | M0 | M0 勘察/归一/计数表以实测为准并在 `spec/` 内留"与 `Agents.md`/`00` 口径差"说明（R-3a）；解析器禁依文档约定写法。**注意 `Agents.md` §9.2 的 26,998↔28,339 行数口径差同样需在 EvidenceSrc 口径中声明**（R-6） |
+| **N-2（实测新增）** | `jf_*`/`lcap_*` 前缀名串与 A/B 级表数不等（实测 334/501 vs 声明 332/450），差值全为 `_bak_` 备份表（2/51） | M1 | 数量等式断言前先按 C 级规则剔除；否则 A 级会被虚增为 351 |
+| **N-3（实测新增）** | `python-louvain` 未安装（`networkx 3.7` 已装） | M3 | 依赖安装策略 `[待确认]`；或退化 `greedy_modularity_communities` 并在交付中写明实际所用 |
+| **N-4（实测新增）** | `graphrag/**/_*` 未被 `.gitignore` 覆盖（`/_*` 为根锚定） | 全部 | C-9：`.gitignore` 单点由编排者维护；派生物入库策略见 C-10 |
+| **N-5（流程）** | 多 agent 并发写 `graphrag/` 共享文件 | 全部 | §4 单一写入者 + 读上游写自己 |
+
+---
+
+## 6. 变更日志
+
+| 日期 | 变更 | 提交 |
+|---|---|---|
+| 2026-10-04 | T-00 首版：M0–M4 任务卡、横切双门、路径分工、实施约定 C-1…C-10、实测基线 §A、风险 R1–R8+N-1…N-5 | 本次（`docs(rag): RUNBOOK 里程碑分解与契约台账`） |
+
+---
+
+## A. 编排者实测事实基线（供 eval-gate / scope-auditor 复算；数值不随约定变更）
+
+| 事实 | 实测值 | 取证命令（口径） | 方案锚点 |
+|---|---|---|---|
+| 登记全量 / DDL 表数 | **1322** | `grep -ic 'CREATE TABLE' test_erp.sql` | §4.4、`00` §五 |
+| 显式外键 | **0**（`FOREIGN KEY` 0、`ADD CONSTRAINT` 0） | `grep -ciE 'FOREIGN KEY' test_erp.sql`、`grep -ciE 'ADD CONSTRAINT' test_erp.sql` | `Agents.md` §1、§5.1 |
+| 分级合计 | A **349**(=332+OT 17) / B **853**(=450+275+128) / C **120**(=117+3) = 1322 | `00` §三/§五/§八 | §2.2、§4.4 |
+| 前缀名串（含备份重叠） | `jf_` **334**、`lcap_` **501**、`N/P{hex}_` **403**、`test_` **3**、含 `_bak_` **117**；无前缀(含 bak) 81 | 表名抽取后按前缀计数 | N-2 风险 |
+| 18 域小计 | 18+21+19+33+13+15+23+27+31+24+21+11+16+34+6+10+6+4 = **332**，+OT 17 = 349 | `00` §四（逐域清单） | M1 每域断言 |
+| A–G 质量问题 | **27**（A3+B4+C4+D5+E3+F4+G4）；上游口径差：`00` 第 5 批与 `Agents.md` §4.3 均标 **30** | `grep -cE '^[[:space:]]*-[[:space:]]+\*\*[A-G]-[0-9]+' 'er-model/05-跨域核心关系总览.md'` | R-3a、§4.4（`00`/`Agents.md` 标 30 → 口径差） |
+| 05 核心关系线 | **33**，且符号类全为 `||..o{`（虚线，0 条 `||--o{`） | `grep -oF '\|\|..o{' 'er-model/05-跨域核心关系总览.md' \| wc -l` | §2.1、R-0 |
+| 01-ER图 关系符分布 | 见 **A-1 代码块**：9 类有出现 + 2 类 **0 出现**；关系线出现合计 **439** | 逐符号 `grep -roF … \| wc -l` | §4.1（M0 勘察表基准） |
+| 03 表头变体 | **10 种**表头签名（见 **A-2 代码块**） | 抽表头行归一后计数 | §4.1、R-3b（M0 归一表基准） |
+| 输入文件数 | `01-ER图` 20 篇、`03-逻辑数据模型` 20 篇（D01–D18 + OT + B级）；无 `02-` 目录 | `ls \| wc -l` | §2.1、`Agents.md` §3（`02-` 缺失见 §9.1） |
+| 行数口径差 | `00` 记 **26,998** vs `wc -l` **28,339** | `wc -l test_erp.sql` | R-6（`line_hint` 降为尽力字段） |
+| 无 PK 表 | `PRIMARY KEY` 实测 **1311** → **11 张无 PK**（= 1322 − 1311，与 `00` §一/§八 声明一致） | `grep -ciE 'PRIMARY KEY' test_erp.sql` | M1 断言、§8.3-5（E-3） |
+| 运行时可用性 | Python **3.14.6**；SQLite **3.50.4**，FTS5 `porter`/`trigram` 建表通过；`networkx 3.7` 有、`community`(python-louvain) 无 | `python3 --version`；`:memory:` 建 `fts5` 虚拟表；`import` 探测 | C-1/C-2/C-2b/N-3 |
+| Git | 分支 `chore/rag`，HEAD `c05203a`，基点 `4a5485a`（未合 `master`） | `git branch --show-current` / `git log --oneline -5` | §0 分支纪律 |
+
+### A-1 · `er-model/01-ER图/*` 关系连接符实测计数
+
+```text
+||--o{   321
+||..o{    92
+||--o|    11
+||..o|     5
+|o--o{     3
+}o--o|     3
+}o--o{     2
+}o..o{     1
+}o..o|     1
+||--||     0   ← 勿依 Agents.md §4.1 的 "1:1 用 ||--||" 写法建正则
+||--|{     0   ← 同上（"强制多行 ||--|{"）
+（合计关系线出现 439；取证：逐符号 grep -roF 计数，跨 20 篇文件）
+```
+
+### A-2 · `er-model/03-逻辑数据模型/*` 表头签名实测计数
+
+```text
+103  |字段|类型|可空|默认|键|含义|
+ 60  |字段名|类型|可空|默认值|键|含义/关联|
+ 59  |字段|类型|可空|默认|主/外键线索|含义|关联|
+ 27  |字段名|类型|可空|默认值|主/外键线索|字段含义|关联（推断）|
+ 14  |字段|类型|可空|默认值|键|含义|
+ 12  |字段名|类型|可空|默认值|键|含义|
+  6  |字段|类型|可空|默认值|主/外键线索|字段含义（COMMENT原文）|与其他表的关联|
+  5  |字段|类型|可空|键|含义|
+  4  |字段|类型|可空|默认|线索|含义|
+  1  |字段|类型|可空|默认|线索|含义|关联|
+（10 种变体、6/7 列并存、"关联"列可有可无或内联于键列 → M0 归一映射须覆盖全部）
+```
+
+> 引用本表任一手写数字前，请重新执行对应命令复算；若与源文件不符，以源文件为准并回报差异。
