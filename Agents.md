@@ -39,6 +39,8 @@ Git：`master` 分支，采用 `feat/fix/docs/chore(域号): 说明（n 表，�
 | `er-model/` | 核心产出 | 数据模型交付物集（详见第 3 节） |
 | `skills/mysql-ddl-data-modeling/` | 方法资产（已纳入版本库） | Agent Skill：`SKILL.md`（工作流）+ `templates.md`（模板 T0–T8）+ `scripts/`（3 个 `.ps1` 实测脚本） |
 | `.qoder/skills/mysql-ddl-data-modeling/` | Skill 运行时镜像 | 与 `skills/` 内容**完全一致**（`diff` 校验无差异）；`.qoder/` 已被 `.gitignore` 排除，供 Qoder 加载 |
+| `agents/` | 方法资产（已纳入版本库） | GraphRAG 落地的多 subagent 定义（`chore/rag` 分支）：1 编排 `rag-orchestrator` + 7 专职（M0–M4 执行专家 + 横切评测/审计），对应 `er-model/graphrag/design-plan.md` v2 |
+| `.qoder/agents/` | Subagent 运行时镜像 | 与 `agents/` 同名文件内容一致（`diff` 校验无差异）；`.qoder/` 已 gitignore，供 Qoder 加载（含既有 `plan-review-panel`） |
 | `_tree.txt` | 辅助 | `er-model/` 目录清单快照（Windows 反斜杠路径风格） |
 | `AnalyzeER.iml` | IDE 配置 | IntelliJ `GENERAL_MODULE`，无语言/构建配置，仅内容根目录（印证"纯文档工程"定位） |
 | `.idea/` | IDE 配置 | JetBrains 工程配置（`misc.xml` 等），已 gitignore |
