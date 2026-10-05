@@ -1,0 +1,681 @@
+{
+  "milestone": "M3",
+  "generator": "graphrag/community/communities.py",
+  "contract": "graphrag/spec (M0)；底座 load_graph_with_lineage（M1+M2）只读",
+  "algorithm": "networkx.greedy_modularity_communities (Louvain 目标退化实现)",
+  "dependency_note": "networkx 3.7 内置；未装 python-louvain/igraph/leidenalg（stack-options §3 硬约束）",
+  "disclaimer": "关系/血缘为逆向推断、非物理外键（全库 0 FK）；社区=分析视图，00 §四 手工 18 域(+OT) 仍为权威 ground truth，不被覆盖。",
+  "edge_gate": {
+    "min_confidence": 0.45,
+    "references_in_file": 499,
+    "references_default_visible": 440,
+    "reference_baseline_visible": 440,
+    "references_loaded": 440,
+    "references_hidden_below_conf": 59,
+    "references_hidden_uncertain": 0
+  },
+  "ingestion": {
+    "kept_edges": 821,
+    "excluded": {
+      "excluded_by_reason": {
+        "REFERENCES:below_min_conf": 59,
+        "REFERENCES:self_loop": 4,
+        "RELATES_TO:below_min_conf": 64,
+        "RELATES_TO:non_A_endpoint": 13,
+        "RELATES_TO:self_loop": 14,
+        "RELATES_TO:uncertain_or_pending": 7
+      },
+      "excluded_total": 161,
+      "uncertain_excluded_sample": [
+        {
+          "src": "jf_customer",
+          "dst": "jf_quality_compensation",
+          "file": "er-model/01-ER图/D15-质量管理域.md",
+          "quote_hash": "bd8a6ef4ede4ae58",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_invoice",
+          "dst": "jf_invoice_application",
+          "file": "er-model/01-ER图/D05-发票与税务域.md",
+          "quote_hash": "ae61d639b50db2b1",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_personnel",
+          "dst": "jf_quality_compensation",
+          "file": "er-model/01-ER图/D15-质量管理域.md",
+          "quote_hash": "cc50d03059f2472c",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_product",
+          "dst": "jf_mes_main_prod_inv_rpt",
+          "file": "er-model/01-ER图/D10-库存与仓储域.md",
+          "quote_hash": "06b1264573a47cd5",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_product_inventory",
+          "dst": "jf_business_inventory_record",
+          "file": "er-model/01-ER图/D10-库存与仓储域.md",
+          "quote_hash": "1a56ab8d4cc9f519",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_quality_standard",
+          "dst": "jf_country",
+          "file": "er-model/01-ER图/D15-质量管理域.md",
+          "quote_hash": "a105a98d1de572cf",
+          "rel": "RELATES_TO"
+        },
+        {
+          "src": "jf_sales_order",
+          "dst": "jf_quality_sales_mapping",
+          "file": "er-model/01-ER图/D15-质量管理域.md",
+          "quote_hash": "730dcce7fcbd7ad0",
+          "rel": "RELATES_TO"
+        }
+      ],
+      "min_conf_gate": 0.45
+    },
+    "low_conf_or_uncertain_in_algorithm": 0
+  },
+  "graph_stats": {
+    "nodes_in_graph": 274,
+    "table_pairs": 477,
+    "kept_records": 821,
+    "isolated_a_tables": 75
+  },
+  "community_count": 17,
+  "communities": [
+    {
+      "community_id": 0,
+      "size": 34,
+      "members": [
+        "flow_change_record",
+        "jf_business_inventory",
+        "jf_business_inventory_record",
+        "jf_business_inventory_transfer",
+        "jf_business_inventory_transfer_product",
+        "jf_catregory",
+        "jf_consignment_inventory_record",
+        "jf_consignment_record",
+        "jf_customer_credit_info",
+        "jf_customer_credit_line_use_log",
+        "jf_inventory_batch_record",
+        "jf_inventory_frozen_record",
+        "jf_inventory_movement_idempotent",
+        "jf_inventory_transfer_frozen",
+        "jf_invoice",
+        "jf_ownership_transfer_application",
+        "jf_ownership_transfer_application_product_bak",
+        "jf_product_inventory",
+        "jf_receipt_account_match",
+        "jf_return_frozen_sn_details",
+        "jf_role_trader_mapping",
+        "jf_sales_order_copy1",
+        "jf_stock_allocation_record",
+        "jf_trader",
+        "jf_trader_attribute",
+        "jf_trader_cash_quota_record",
+        "jf_trader_category_mapping",
+        "jf_trader_credit_quota_record",
+        "jf_trader_invoice",
+        "jf_trader_quota",
+        "jf_trader_quota_modify_record",
+        "jf_trader_quota_process_apply",
+        "jf_trader_sales_target_modification_record",
+        "jf_wms_request_record"
+      ],
+      "internal_edges": 44,
+      "external_edges": 48,
+      "internal_weight": 48.525,
+      "external_weight": 44.175,
+      "internal_external_ratio": 0.9167,
+      "density": 0.0784,
+      "domain_profile": {
+        "D01": 1,
+        "D04": 3,
+        "D05": 2,
+        "D07": 1,
+        "D08": 8,
+        "D10": 15,
+        "D13": 1,
+        "D14": 1,
+        "D16": 1,
+        "OT": 1
+      }
+    },
+    {
+      "community_id": 1,
+      "size": 29,
+      "members": [
+        "jf_application_nature",
+        "jf_rebate",
+        "jf_rebate_audit_log",
+        "jf_rebate_detail",
+        "jf_rebate_query_temp",
+        "jf_refund_type",
+        "jf_return_deduction_fee",
+        "jf_return_product",
+        "jf_return_quality_result",
+        "jf_sales_order",
+        "jf_sales_order_async",
+        "jf_sales_order_change_record",
+        "jf_sales_order_detail",
+        "jf_sales_order_detail_fee",
+        "jf_sales_order_oa_audit",
+        "jf_sales_order_picking_detail",
+        "jf_sales_order_receipt",
+        "jf_sales_order_receipt_detail",
+        "jf_sales_order_status_record",
+        "jf_sales_return",
+        "jf_sales_return_dye_tank",
+        "jf_sales_return_inbound_sn",
+        "jf_sales_return_link_original",
+        "jf_sales_return_oa",
+        "jf_sales_return_request",
+        "jf_sales_return_request_oa",
+        "jf_settlement_detail",
+        "jf_shipping_progress",
+        "jf_warehouse_receipt"
+      ],
+      "internal_edges": 35,
+      "external_edges": 23,
+      "internal_weight": 43.575,
+      "external_weight": 25.55,
+      "internal_external_ratio": 1.5217,
+      "density": 0.0862,
+      "domain_profile": {
+        "D01": 10,
+        "D06": 1,
+        "D07": 11,
+        "D10": 1,
+        "D12": 4,
+        "D14": 1,
+        "D17": 1
+      }
+    },
+    {
+      "community_id": 2,
+      "size": 44,
+      "members": [
+        "jf_application_scope",
+        "jf_application_season",
+        "jf_basic_craft",
+        "jf_business_inventory1",
+        "jf_business_inventory_20251230",
+        "jf_business_inventory_import",
+        "jf_cloth_goods_sales_target",
+        "jf_cloth_goods_sales_target_import",
+        "jf_cloth_modification_record",
+        "jf_cloth_sales_target",
+        "jf_cloth_sales_target_import",
+        "jf_customer_color",
+        "jf_dye_inventory",
+        "jf_dyeing_method",
+        "jf_fabric_category",
+        "jf_fabric_composition",
+        "jf_fabric_structure",
+        "jf_goods",
+        "jf_goods_category",
+        "jf_goods_craft",
+        "jf_goods_finish_product",
+        "jf_goods_marketing",
+        "jf_goods_price_adjustments",
+        "jf_goods_price_mapping",
+        "jf_goods_quality_standard",
+        "jf_goods_raw_fabric",
+        "jf_goods_require",
+        "jf_goods_specs",
+        "jf_goods_system",
+        "jf_goods_tag_mapping",
+        "jf_primary_color",
+        "jf_printing_approve",
+        "jf_product",
+        "jf_product_color_coordina_mapping",
+        "jf_product_color_price",
+        "jf_product_detail",
+        "jf_product_special_craft_mapping",
+        "jf_product_type",
+        "jf_proofing_number",
+        "jf_return_repair_dye",
+        "jf_sales_category",
+        "jf_special_craft",
+        "jf_staining_category",
+        "jf_stock_report_period_product_msg"
+      ],
+      "internal_edges": 59,
+      "external_edges": 24,
+      "internal_weight": 72.6,
+      "external_weight": 21.525,
+      "internal_external_ratio": 2.4583,
+      "density": 0.0624,
+      "domain_profile": {
+        "D02": 1,
+        "D07": 1,
+        "D08": 1,
+        "D09": 20,
+        "D10": 4,
+        "D13": 5,
+        "D14": 11,
+        "D18": 1
+      }
+    },
+    {
+      "community_id": 3,
+      "size": 6,
+      "members": [
+        "jf_assign_responsibility",
+        "jf_customer_complaints_bak",
+        "jf_expense_subject",
+        "jf_expense_subject_department_mapping",
+        "jf_quality_compensation",
+        "jf_quality_sales_mapping"
+      ],
+      "internal_edges": 5,
+      "external_edges": 2,
+      "internal_weight": 6.55,
+      "external_weight": 1.925,
+      "internal_external_ratio": 2.5,
+      "density": 0.3333,
+      "domain_profile": {
+        "D06": 3,
+        "D08": 1,
+        "D15": 2
+      }
+    },
+    {
+      "community_id": 4,
+      "size": 3,
+      "members": [
+        "jf_bloc_modification_record",
+        "jf_bloc_sales_target",
+        "jf_bloc_trader_sales_target_allocation"
+      ],
+      "internal_edges": 2,
+      "external_edges": 1,
+      "internal_weight": 2.3,
+      "external_weight": 0.575,
+      "internal_external_ratio": 2.0,
+      "density": 0.6667,
+      "domain_profile": {
+        "D13": 3
+      }
+    },
+    {
+      "community_id": 5,
+      "size": 42,
+      "members": [
+        "jf_brand",
+        "jf_company",
+        "jf_contract_allocation_apply",
+        "jf_contract_allocation_apply_attachment",
+        "jf_contract_allocation_customer_detail",
+        "jf_contract_application_quota_record",
+        "jf_contract_information",
+        "jf_contract_postpone",
+        "jf_contract_quota_adjust_application",
+        "jf_contract_quota_adjust_application_import",
+        "jf_contract_quota_customer",
+        "jf_contract_quota_customer_import",
+        "jf_contract_quota_use_record",
+        "jf_contract_sales_agreement",
+        "jf_contract_strategic_agreement",
+        "jf_contract_temp_quota_application_record",
+        "jf_contract_termination",
+        "jf_customer",
+        "jf_customer_account",
+        "jf_customer_account_detail",
+        "jf_customer_balance_usage_record",
+        "jf_customer_base",
+        "jf_customer_equity_apply",
+        "jf_customer_equity_item",
+        "jf_customer_equity_item_apply_mapping",
+        "jf_customer_equity_operation_log",
+        "jf_customer_invoice_information",
+        "jf_customer_level",
+        "jf_customer_level_adjustment_record",
+        "jf_customer_merge_discounts_record",
+        "jf_customer_quality_grade",
+        "jf_customer_receipt_information",
+        "jf_equity_item",
+        "jf_invoice_information",
+        "jf_overdue_order_allowed_tag_record",
+        "jf_payment_way",
+        "jf_quota_allocation_record",
+        "jf_receipt_information",
+        "jf_receivable_claim_quota_recovery_record",
+        "jf_sales_order_quota_usage_record",
+        "jf_sales_order_test",
+        "jf_stockout_register_record"
+      ],
+      "internal_edges": 57,
+      "external_edges": 49,
+      "internal_weight": 66.425,
+      "external_weight": 50.225,
+      "internal_external_ratio": 1.1633,
+      "density": 0.0662,
+      "domain_profile": {
+        "D01": 2,
+        "D03": 17,
+        "D04": 7,
+        "D05": 2,
+        "D08": 7,
+        "D09": 1,
+        "D10": 1,
+        "D11": 5
+      }
+    },
+    {
+      "community_id": 6,
+      "size": 32,
+      "members": [
+        "jf_collection_account",
+        "jf_collection_bill",
+        "jf_collection_notice",
+        "jf_collection_notice_fee_item",
+        "jf_collection_notice_link",
+        "jf_collection_notice_link_fee_item",
+        "jf_currency",
+        "jf_fee_bill",
+        "jf_fee_bill_item",
+        "jf_fee_bill_responsibility",
+        "jf_fee_bill_sales_order",
+        "jf_fee_category",
+        "jf_fee_invoice_record",
+        "jf_fee_item",
+        "jf_fee_item_flow",
+        "jf_income_bill",
+        "jf_income_bill_collection_detail",
+        "jf_invoice_application",
+        "jf_invoice_application_log",
+        "jf_invoice_fee_detail",
+        "jf_receivable_claim",
+        "jf_receivable_claim_fee_item",
+        "jf_receivable_claim_fee_item_audit_log",
+        "jf_receivable_refund_order",
+        "jf_receivable_refund_order_detail",
+        "jf_receivable_write_off",
+        "jf_receivable_write_off_collection_mapping",
+        "jf_receivable_write_off_fee_item_mapping",
+        "jf_refund_category",
+        "jf_settlement_unit",
+        "jf_tax_bill",
+        "jf_tax_bill_detail"
+      ],
+      "internal_edges": 66,
+      "external_edges": 38,
+      "internal_weight": 77.15,
+      "external_weight": 41.175,
+      "internal_external_ratio": 1.7368,
+      "density": 0.1331,
+      "domain_profile": {
+        "D04": 16,
+        "D05": 6,
+        "D06": 9,
+        "D07": 1
+      }
+    },
+    {
+      "community_id": 7,
+      "size": 5,
+      "members": [
+        "jf_control_account_period",
+        "jf_customer_overdue_tag_record",
+        "jf_overdue_rules",
+        "jf_overdue_rules_billing",
+        "jf_payment_form"
+      ],
+      "internal_edges": 6,
+      "external_edges": 4,
+      "internal_weight": 6.725,
+      "external_weight": 4.025,
+      "internal_external_ratio": 1.5,
+      "density": 0.6,
+      "domain_profile": {
+        "D04": 5
+      }
+    },
+    {
+      "community_id": 8,
+      "size": 16,
+      "members": [
+        "jf_coupon",
+        "jf_coupon_acquisition_record",
+        "jf_coupon_activity",
+        "jf_coupon_activity_step",
+        "jf_coupon_customer",
+        "jf_coupon_customer_record",
+        "jf_coupon_detail",
+        "jf_coupon_distribute",
+        "jf_coupon_usage_record",
+        "jf_coupon_use_record",
+        "jf_first_trial_cut_discount_usage_record",
+        "jf_sales_order_discount",
+        "jf_trial_cut_customer_mapping",
+        "jf_trial_cut_discount_activity",
+        "jf_trial_cut_goods_mapping",
+        "jf_trial_cut_use_record"
+      ],
+      "internal_edges": 17,
+      "external_edges": 5,
+      "internal_weight": 23.65,
+      "external_weight": 3.85,
+      "internal_external_ratio": 3.4,
+      "density": 0.1417,
+      "domain_profile": {
+        "D01": 1,
+        "D11": 15
+      }
+    },
+    {
+      "community_id": 9,
+      "size": 6,
+      "members": [
+        "jf_customer_reconciliation",
+        "jf_customer_statement",
+        "jf_final_factory_statement",
+        "jf_statement",
+        "jf_statement_fee_category",
+        "jf_statement_fee_category_copy1"
+      ],
+      "internal_edges": 6,
+      "external_edges": 6,
+      "internal_weight": 7.05,
+      "external_weight": 3.45,
+      "internal_external_ratio": 1.0,
+      "density": 0.4,
+      "domain_profile": {
+        "D12": 6
+      }
+    },
+    {
+      "community_id": 10,
+      "size": 34,
+      "members": [
+        "jf_datat_dict",
+        "jf_delivery_address",
+        "jf_delivery_method",
+        "jf_developmen_approval",
+        "jf_emergency_situation",
+        "jf_product_category",
+        "jf_project_category",
+        "jf_project_initiation_analysis",
+        "jf_project_source",
+        "jf_quality_standard",
+        "jf_quality_standard_test_project",
+        "jf_quota_goods_mapping",
+        "jf_quota_goods_mapping_import",
+        "jf_quotation_application",
+        "jf_quotation_application_import",
+        "jf_quote_goods_detail",
+        "jf_quote_test_project_mapping",
+        "jf_reservation_stock",
+        "jf_reservation_stock_client_requir",
+        "jf_reservation_stock_import",
+        "jf_reservation_stock_product_msg",
+        "jf_reservation_stock_record",
+        "jf_sales_order_cus",
+        "jf_sales_stock_oa_flow",
+        "jf_sales_stock_review_modif_record",
+        "jf_shipping_mode",
+        "jf_stock_pot_replenishment",
+        "jf_stock_pot_replenishment_import",
+        "jf_stock_pot_replenishment_product_msg",
+        "jf_stock_pot_summary_info",
+        "jf_stock_progress",
+        "jf_stock_quality_standard",
+        "jf_stock_report_period",
+        "jf_test_project"
+      ],
+      "internal_edges": 41,
+      "external_edges": 30,
+      "internal_weight": 40.575,
+      "external_weight": 24.925,
+      "internal_external_ratio": 1.3667,
+      "density": 0.0731,
+      "domain_profile": {
+        "D01": 1,
+        "D02": 18,
+        "D03": 2,
+        "D09": 2,
+        "D14": 2,
+        "D15": 3,
+        "D17": 3,
+        "D18": 3
+      }
+    },
+    {
+      "community_id": 11,
+      "size": 11,
+      "members": [
+        "jf_goods_detail",
+        "jf_package_paper_tube",
+        "jf_package_plastic_bag",
+        "jf_repair_craft_require",
+        "jf_repair_delivery_info",
+        "jf_repair_inside_sn",
+        "jf_repair_process_info",
+        "jf_repair_salesman_inventory",
+        "jf_return_repair_order",
+        "jf_return_repair_packaging",
+        "jf_return_repair_quality"
+      ],
+      "internal_edges": 11,
+      "external_edges": 8,
+      "internal_weight": 13.725,
+      "external_weight": 8.45,
+      "internal_external_ratio": 1.375,
+      "density": 0.2,
+      "domain_profile": {
+        "D07": 8,
+        "D09": 1,
+        "D14": 2
+      }
+    },
+    {
+      "community_id": 12,
+      "size": 3,
+      "members": [
+        "jf_group_modification_record",
+        "jf_group_month_sales_target",
+        "jf_group_target_allocate"
+      ],
+      "internal_edges": 2,
+      "external_edges": 1,
+      "internal_weight": 2.3,
+      "external_weight": 0.575,
+      "internal_external_ratio": 2.0,
+      "density": 0.6667,
+      "domain_profile": {
+        "D13": 3
+      }
+    },
+    {
+      "community_id": 13,
+      "size": 3,
+      "members": [
+        "jf_individual_modification_record",
+        "jf_individual_month_sales_target",
+        "jf_individual_sales_target"
+      ],
+      "internal_edges": 2,
+      "external_edges": 3,
+      "internal_weight": 2.3,
+      "external_weight": 1.725,
+      "internal_external_ratio": 0.6667,
+      "density": 0.6667,
+      "domain_profile": {
+        "D13": 3
+      }
+    },
+    {
+      "community_id": 14,
+      "size": 2,
+      "members": [
+        "jf_personnel",
+        "jf_position"
+      ],
+      "internal_edges": 1,
+      "external_edges": 0,
+      "internal_weight": 1.15,
+      "external_weight": 0.0,
+      "internal_external_ratio": null,
+      "density": 1.0,
+      "domain_profile": {
+        "D16": 2
+      }
+    },
+    {
+      "community_id": 15,
+      "size": 2,
+      "members": [
+        "personnel",
+        "position"
+      ],
+      "internal_edges": 1,
+      "external_edges": 0,
+      "internal_weight": 1.15,
+      "external_weight": 0.0,
+      "internal_external_ratio": null,
+      "density": 1.0,
+      "domain_profile": {
+        "OT": 2
+      }
+    },
+    {
+      "community_id": 16,
+      "size": 2,
+      "members": [
+        "sys_dict_data",
+        "sys_dict_type"
+      ],
+      "internal_edges": 1,
+      "external_edges": 0,
+      "internal_weight": 0.9,
+      "external_weight": 0.0,
+      "internal_external_ratio": null,
+      "density": 1.0,
+      "domain_profile": {
+        "OT": 2
+      }
+    }
+  ],
+  "size_distribution": {
+    "2": 3,
+    "3": 3,
+    "5": 1,
+    "6": 2,
+    "11": 1,
+    "16": 1,
+    "29": 1,
+    "32": 1,
+    "34": 2,
+    "42": 1,
+    "44": 1
+  },
+  "authoritative_domain_source": "00 §四 (M1 graph node.domain)",
+  "community_role": "analysis_view_only"
+}

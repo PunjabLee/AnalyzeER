@@ -1,0 +1,1150 @@
+{
+  "milestone": "M3",
+  "generator": "graphrag/community/nmi_vs_baseline.py",
+  "ground_truth": "00 §四 手工 18 域(+OT) —— 权威，不被社区覆盖",
+  "analysis_view": "greedy_modularity 涌现社区 —— 结构对照",
+  "node_scope": {
+    "nodes_compared": 274,
+    "a_tables_total": 349,
+    "isolated_excluded_from_scope": 75
+  },
+  "nmi": {
+    "n": 274,
+    "n_communities": 17,
+    "n_domains": 19,
+    "mutual_information_nats": 1.525696,
+    "H_communities": 2.378942,
+    "H_domains": 2.788619,
+    "nmi_arithmetic": 0.59049,
+    "nmi_geometric": 0.592354,
+    "nmi_max": 0.547115,
+    "nmi_min": 0.641334,
+    "degenerate": false,
+    "log_base": "e (nats)"
+  },
+  "confusion_mapping": {
+    "community_to_domains": {
+      "0": {
+        "D01": 1,
+        "D04": 3,
+        "D05": 2,
+        "D07": 1,
+        "D08": 8,
+        "D10": 15,
+        "D13": 1,
+        "D14": 1,
+        "D16": 1,
+        "OT": 1
+      },
+      "1": {
+        "D01": 10,
+        "D06": 1,
+        "D07": 11,
+        "D10": 1,
+        "D12": 4,
+        "D14": 1,
+        "D17": 1
+      },
+      "2": {
+        "D02": 1,
+        "D07": 1,
+        "D08": 1,
+        "D09": 20,
+        "D10": 4,
+        "D13": 5,
+        "D14": 11,
+        "D18": 1
+      },
+      "3": {
+        "D06": 3,
+        "D08": 1,
+        "D15": 2
+      },
+      "4": {
+        "D13": 3
+      },
+      "5": {
+        "D01": 2,
+        "D03": 17,
+        "D04": 7,
+        "D05": 2,
+        "D08": 7,
+        "D09": 1,
+        "D10": 1,
+        "D11": 5
+      },
+      "6": {
+        "D04": 16,
+        "D05": 6,
+        "D06": 9,
+        "D07": 1
+      },
+      "7": {
+        "D04": 5
+      },
+      "8": {
+        "D01": 1,
+        "D11": 15
+      },
+      "9": {
+        "D12": 6
+      },
+      "10": {
+        "D01": 1,
+        "D02": 18,
+        "D03": 2,
+        "D09": 2,
+        "D14": 2,
+        "D15": 3,
+        "D17": 3,
+        "D18": 3
+      },
+      "11": {
+        "D07": 8,
+        "D09": 1,
+        "D14": 2
+      },
+      "12": {
+        "D13": 3
+      },
+      "13": {
+        "D13": 3
+      },
+      "14": {
+        "D16": 2
+      },
+      "15": {
+        "OT": 2
+      },
+      "16": {
+        "OT": 2
+      }
+    },
+    "domain_to_communities": {
+      "D01": {
+        "0": 1,
+        "1": 10,
+        "5": 2,
+        "8": 1,
+        "10": 1
+      },
+      "D02": {
+        "2": 1,
+        "10": 18
+      },
+      "D03": {
+        "5": 17,
+        "10": 2
+      },
+      "D04": {
+        "0": 3,
+        "5": 7,
+        "6": 16,
+        "7": 5
+      },
+      "D05": {
+        "0": 2,
+        "5": 2,
+        "6": 6
+      },
+      "D06": {
+        "1": 1,
+        "3": 3,
+        "6": 9
+      },
+      "D07": {
+        "0": 1,
+        "1": 11,
+        "2": 1,
+        "6": 1,
+        "11": 8
+      },
+      "D08": {
+        "0": 8,
+        "2": 1,
+        "3": 1,
+        "5": 7
+      },
+      "D09": {
+        "2": 20,
+        "5": 1,
+        "10": 2,
+        "11": 1
+      },
+      "D10": {
+        "0": 15,
+        "1": 1,
+        "2": 4,
+        "5": 1
+      },
+      "D11": {
+        "5": 5,
+        "8": 15
+      },
+      "D12": {
+        "1": 4,
+        "9": 6
+      },
+      "D13": {
+        "0": 1,
+        "2": 5,
+        "4": 3,
+        "12": 3,
+        "13": 3
+      },
+      "D14": {
+        "0": 1,
+        "1": 1,
+        "2": 11,
+        "10": 2,
+        "11": 2
+      },
+      "D15": {
+        "3": 2,
+        "10": 3
+      },
+      "D16": {
+        "0": 1,
+        "14": 2
+      },
+      "D17": {
+        "1": 1,
+        "10": 3
+      },
+      "D18": {
+        "2": 1,
+        "10": 3
+      },
+      "OT": {
+        "0": 1,
+        "15": 2,
+        "16": 2
+      }
+    }
+  },
+  "diff_clusters_explainable": {
+    "split_domains": [
+      {
+        "domain": "D01",
+        "n_communities": 5,
+        "communities": [
+          "0",
+          "1",
+          "5",
+          "8",
+          "10"
+        ],
+        "members": [
+          "jf_sales_order",
+          "jf_sales_order_async",
+          "jf_sales_order_change_record",
+          "jf_sales_order_copy1",
+          "jf_sales_order_cus",
+          "jf_sales_order_detail",
+          "jf_sales_order_detail_fee",
+          "jf_sales_order_discount",
+          "jf_sales_order_oa_audit",
+          "jf_sales_order_picking_detail",
+          "jf_sales_order_quota_usage_record",
+          "jf_sales_order_receipt",
+          "jf_sales_order_receipt_detail",
+          "jf_sales_order_status_record",
+          "jf_sales_order_test"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D02",
+        "n_communities": 2,
+        "communities": [
+          "2",
+          "10"
+        ],
+        "members": [
+          "jf_quotation_application",
+          "jf_quotation_application_import",
+          "jf_quote_goods_detail",
+          "jf_quote_test_project_mapping",
+          "jf_reservation_stock",
+          "jf_reservation_stock_client_requir",
+          "jf_reservation_stock_import",
+          "jf_reservation_stock_product_msg",
+          "jf_reservation_stock_record",
+          "jf_sales_stock_oa_flow",
+          "jf_sales_stock_review_modif_record",
+          "jf_stock_pot_replenishment",
+          "jf_stock_pot_replenishment_import",
+          "jf_stock_pot_replenishment_product_msg",
+          "jf_stock_pot_summary_info",
+          "jf_stock_progress",
+          "jf_stock_quality_standard",
+          "jf_stock_report_period",
+          "jf_stock_report_period_product_msg"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D03",
+        "n_communities": 2,
+        "communities": [
+          "5",
+          "10"
+        ],
+        "members": [
+          "jf_contract_allocation_apply",
+          "jf_contract_allocation_apply_attachment",
+          "jf_contract_allocation_customer_detail",
+          "jf_contract_application_quota_record",
+          "jf_contract_information",
+          "jf_contract_postpone",
+          "jf_contract_quota_adjust_application",
+          "jf_contract_quota_adjust_application_import",
+          "jf_contract_quota_customer",
+          "jf_contract_quota_customer_import",
+          "jf_contract_quota_use_record",
+          "jf_contract_sales_agreement",
+          "jf_contract_strategic_agreement",
+          "jf_contract_temp_quota_application_record",
+          "jf_contract_termination",
+          "jf_customer_merge_discounts_record",
+          "jf_quota_allocation_record",
+          "jf_quota_goods_mapping",
+          "jf_quota_goods_mapping_import"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D04",
+        "n_communities": 4,
+        "communities": [
+          "0",
+          "5",
+          "6",
+          "7"
+        ],
+        "members": [
+          "jf_collection_account",
+          "jf_collection_bill",
+          "jf_collection_notice",
+          "jf_collection_notice_fee_item",
+          "jf_collection_notice_link",
+          "jf_collection_notice_link_fee_item",
+          "jf_control_account_period",
+          "jf_customer_account",
+          "jf_customer_account_detail",
+          "jf_customer_balance_usage_record",
+          "jf_customer_credit_info",
+          "jf_customer_credit_line_use_log",
+          "jf_customer_overdue_tag_record",
+          "jf_income_bill",
+          "jf_income_bill_collection_detail",
+          "jf_overdue_order_allowed_tag_record",
+          "jf_overdue_rules",
+          "jf_overdue_rules_billing",
+          "jf_payment_form",
+          "jf_payment_way",
+          "jf_receipt_account_match",
+          "jf_receipt_information",
+          "jf_receivable_claim",
+          "jf_receivable_claim_fee_item",
+          "jf_receivable_claim_fee_item_audit_log",
+          "jf_receivable_claim_quota_recovery_record",
+          "jf_receivable_refund_order",
+          "jf_receivable_refund_order_detail",
+          "jf_receivable_write_off",
+          "jf_receivable_write_off_collection_mapping",
+          "jf_receivable_write_off_fee_item_mapping"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D05",
+        "n_communities": 3,
+        "communities": [
+          "0",
+          "5",
+          "6"
+        ],
+        "members": [
+          "jf_customer_invoice_information",
+          "jf_fee_invoice_record",
+          "jf_invoice",
+          "jf_invoice_application",
+          "jf_invoice_application_log",
+          "jf_invoice_fee_detail",
+          "jf_invoice_information",
+          "jf_tax_bill",
+          "jf_tax_bill_detail",
+          "jf_trader_invoice"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D06",
+        "n_communities": 3,
+        "communities": [
+          "1",
+          "3",
+          "6"
+        ],
+        "members": [
+          "jf_assign_responsibility",
+          "jf_currency",
+          "jf_expense_subject",
+          "jf_expense_subject_department_mapping",
+          "jf_fee_bill",
+          "jf_fee_bill_item",
+          "jf_fee_bill_responsibility",
+          "jf_fee_bill_sales_order",
+          "jf_fee_category",
+          "jf_fee_item",
+          "jf_fee_item_flow",
+          "jf_settlement_detail",
+          "jf_settlement_unit"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D07",
+        "n_communities": 5,
+        "communities": [
+          "0",
+          "1",
+          "2",
+          "6",
+          "11"
+        ],
+        "members": [
+          "jf_refund_category",
+          "jf_refund_type",
+          "jf_repair_craft_require",
+          "jf_repair_delivery_info",
+          "jf_repair_inside_sn",
+          "jf_repair_process_info",
+          "jf_repair_salesman_inventory",
+          "jf_return_deduction_fee",
+          "jf_return_frozen_sn_details",
+          "jf_return_product",
+          "jf_return_quality_result",
+          "jf_return_repair_dye",
+          "jf_return_repair_order",
+          "jf_return_repair_packaging",
+          "jf_return_repair_quality",
+          "jf_sales_return",
+          "jf_sales_return_dye_tank",
+          "jf_sales_return_inbound_sn",
+          "jf_sales_return_link_original",
+          "jf_sales_return_oa",
+          "jf_sales_return_request",
+          "jf_sales_return_request_oa"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D08",
+        "n_communities": 4,
+        "communities": [
+          "0",
+          "2",
+          "3",
+          "5"
+        ],
+        "members": [
+          "jf_company",
+          "jf_customer",
+          "jf_customer_base",
+          "jf_customer_color",
+          "jf_customer_complaints_bak",
+          "jf_customer_level",
+          "jf_customer_level_adjustment_record",
+          "jf_customer_quality_grade",
+          "jf_customer_receipt_information",
+          "jf_trader",
+          "jf_trader_attribute",
+          "jf_trader_cash_quota_record",
+          "jf_trader_category_mapping",
+          "jf_trader_credit_quota_record",
+          "jf_trader_quota",
+          "jf_trader_quota_modify_record",
+          "jf_trader_quota_process_apply"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D09",
+        "n_communities": 4,
+        "communities": [
+          "2",
+          "5",
+          "10",
+          "11"
+        ],
+        "members": [
+          "jf_brand",
+          "jf_developmen_approval",
+          "jf_goods",
+          "jf_goods_category",
+          "jf_goods_craft",
+          "jf_goods_detail",
+          "jf_goods_finish_product",
+          "jf_goods_marketing",
+          "jf_goods_price_adjustments",
+          "jf_goods_price_mapping",
+          "jf_goods_quality_standard",
+          "jf_goods_raw_fabric",
+          "jf_goods_require",
+          "jf_goods_specs",
+          "jf_goods_system",
+          "jf_goods_tag_mapping",
+          "jf_printing_approve",
+          "jf_product",
+          "jf_product_category",
+          "jf_product_color_coordina_mapping",
+          "jf_product_color_price",
+          "jf_product_detail",
+          "jf_product_special_craft_mapping",
+          "jf_product_type"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D10",
+        "n_communities": 4,
+        "communities": [
+          "0",
+          "1",
+          "2",
+          "5"
+        ],
+        "members": [
+          "jf_business_inventory",
+          "jf_business_inventory1",
+          "jf_business_inventory_20251230",
+          "jf_business_inventory_import",
+          "jf_business_inventory_record",
+          "jf_business_inventory_transfer",
+          "jf_business_inventory_transfer_product",
+          "jf_consignment_inventory_record",
+          "jf_consignment_record",
+          "jf_dye_inventory",
+          "jf_inventory_batch_record",
+          "jf_inventory_frozen_record",
+          "jf_inventory_movement_idempotent",
+          "jf_inventory_transfer_frozen",
+          "jf_ownership_transfer_application",
+          "jf_ownership_transfer_application_product_bak",
+          "jf_product_inventory",
+          "jf_stock_allocation_record",
+          "jf_stockout_register_record",
+          "jf_warehouse_receipt",
+          "jf_wms_request_record"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D11",
+        "n_communities": 2,
+        "communities": [
+          "5",
+          "8"
+        ],
+        "members": [
+          "jf_coupon",
+          "jf_coupon_acquisition_record",
+          "jf_coupon_activity",
+          "jf_coupon_activity_step",
+          "jf_coupon_customer",
+          "jf_coupon_customer_record",
+          "jf_coupon_detail",
+          "jf_coupon_distribute",
+          "jf_coupon_usage_record",
+          "jf_coupon_use_record",
+          "jf_customer_equity_apply",
+          "jf_customer_equity_item",
+          "jf_customer_equity_item_apply_mapping",
+          "jf_customer_equity_operation_log",
+          "jf_equity_item",
+          "jf_first_trial_cut_discount_usage_record",
+          "jf_trial_cut_customer_mapping",
+          "jf_trial_cut_discount_activity",
+          "jf_trial_cut_goods_mapping",
+          "jf_trial_cut_use_record"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D12",
+        "n_communities": 2,
+        "communities": [
+          "1",
+          "9"
+        ],
+        "members": [
+          "jf_customer_reconciliation",
+          "jf_customer_statement",
+          "jf_final_factory_statement",
+          "jf_rebate",
+          "jf_rebate_audit_log",
+          "jf_rebate_detail",
+          "jf_rebate_query_temp",
+          "jf_statement",
+          "jf_statement_fee_category",
+          "jf_statement_fee_category_copy1"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D13",
+        "n_communities": 5,
+        "communities": [
+          "0",
+          "2",
+          "4",
+          "12",
+          "13"
+        ],
+        "members": [
+          "jf_bloc_modification_record",
+          "jf_bloc_sales_target",
+          "jf_bloc_trader_sales_target_allocation",
+          "jf_cloth_goods_sales_target",
+          "jf_cloth_goods_sales_target_import",
+          "jf_cloth_modification_record",
+          "jf_cloth_sales_target",
+          "jf_cloth_sales_target_import",
+          "jf_group_modification_record",
+          "jf_group_month_sales_target",
+          "jf_group_target_allocate",
+          "jf_individual_modification_record",
+          "jf_individual_month_sales_target",
+          "jf_individual_sales_target",
+          "jf_trader_sales_target_modification_record"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D14",
+        "n_communities": 5,
+        "communities": [
+          "0",
+          "1",
+          "2",
+          "10",
+          "11"
+        ],
+        "members": [
+          "jf_application_nature",
+          "jf_application_scope",
+          "jf_application_season",
+          "jf_basic_craft",
+          "jf_catregory",
+          "jf_datat_dict",
+          "jf_dyeing_method",
+          "jf_emergency_situation",
+          "jf_fabric_category",
+          "jf_fabric_composition",
+          "jf_fabric_structure",
+          "jf_package_paper_tube",
+          "jf_package_plastic_bag",
+          "jf_primary_color",
+          "jf_sales_category",
+          "jf_special_craft",
+          "jf_staining_category"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D15",
+        "n_communities": 2,
+        "communities": [
+          "3",
+          "10"
+        ],
+        "members": [
+          "jf_quality_compensation",
+          "jf_quality_sales_mapping",
+          "jf_quality_standard",
+          "jf_quality_standard_test_project",
+          "jf_test_project"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D16",
+        "n_communities": 2,
+        "communities": [
+          "0",
+          "14"
+        ],
+        "members": [
+          "jf_personnel",
+          "jf_position",
+          "jf_role_trader_mapping"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D17",
+        "n_communities": 2,
+        "communities": [
+          "1",
+          "10"
+        ],
+        "members": [
+          "jf_delivery_address",
+          "jf_delivery_method",
+          "jf_shipping_mode",
+          "jf_shipping_progress"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "D18",
+        "n_communities": 2,
+        "communities": [
+          "2",
+          "10"
+        ],
+        "members": [
+          "jf_project_category",
+          "jf_project_initiation_analysis",
+          "jf_project_source",
+          "jf_proofing_number"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      },
+      {
+        "domain": "OT",
+        "n_communities": 3,
+        "communities": [
+          "0",
+          "15",
+          "16"
+        ],
+        "members": [
+          "flow_change_record",
+          "personnel",
+          "position",
+          "sys_dict_data",
+          "sys_dict_type"
+        ],
+        "note": "该 00 域成员被结构分裂到多社区；须由跨域耦合/子团区分解释（非权威分组变更）"
+      }
+    ],
+    "mixed_communities": [
+      {
+        "community_id": "0",
+        "domains": [
+          "D01",
+          "D04",
+          "D05",
+          "D07",
+          "D08",
+          "D10",
+          "D13",
+          "D14",
+          "D16",
+          "OT"
+        ],
+        "n_domains": 10,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_trader",
+            "domain": "D08",
+            "weighted_degree": 55.3,
+            "betweenness": 0.391823
+          },
+          {
+            "table": "jf_product_inventory",
+            "domain": "D10",
+            "weighted_degree": 14.125,
+            "betweenness": 0.002857
+          },
+          {
+            "table": "jf_trader_quota",
+            "domain": "D08",
+            "weighted_degree": 7.05,
+            "betweenness": 0.014302
+          },
+          {
+            "table": "jf_inventory_batch_record",
+            "domain": "D10",
+            "weighted_degree": 4.75,
+            "betweenness": 0.006769
+          },
+          {
+            "table": "jf_inventory_movement_idempotent",
+            "domain": "D10",
+            "weighted_degree": 4.5,
+            "betweenness": 0.007164
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "1",
+        "domains": [
+          "D01",
+          "D06",
+          "D07",
+          "D10",
+          "D12",
+          "D14",
+          "D17"
+        ],
+        "n_domains": 7,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_sales_order",
+            "domain": "D01",
+            "weighted_degree": 36.0,
+            "betweenness": 0.114945
+          },
+          {
+            "table": "jf_sales_return",
+            "domain": "D07",
+            "weighted_degree": 11.975,
+            "betweenness": 0.060627
+          },
+          {
+            "table": "jf_sales_return_request",
+            "domain": "D07",
+            "weighted_degree": 10.225,
+            "betweenness": 0.035553
+          },
+          {
+            "table": "jf_sales_order_detail",
+            "domain": "D01",
+            "weighted_degree": 5.975,
+            "betweenness": 0.00235
+          },
+          {
+            "table": "jf_rebate",
+            "domain": "D12",
+            "weighted_degree": 5.775,
+            "betweenness": 0.013301
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "2",
+        "domains": [
+          "D02",
+          "D07",
+          "D08",
+          "D09",
+          "D10",
+          "D13",
+          "D14",
+          "D18"
+        ],
+        "n_domains": 8,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_goods",
+            "domain": "D09",
+            "weighted_degree": 42.125,
+            "betweenness": 0.16387
+          },
+          {
+            "table": "jf_product",
+            "domain": "D09",
+            "weighted_degree": 21.55,
+            "betweenness": 0.045321
+          },
+          {
+            "table": "jf_basic_craft",
+            "domain": "D14",
+            "weighted_degree": 6.2,
+            "betweenness": 0.024145
+          },
+          {
+            "table": "jf_product_detail",
+            "domain": "D09",
+            "weighted_degree": 5.8,
+            "betweenness": 0.005608
+          },
+          {
+            "table": "jf_printing_approve",
+            "domain": "D09",
+            "weighted_degree": 4.825,
+            "betweenness": 0.007534
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "3",
+        "domains": [
+          "D06",
+          "D08",
+          "D15"
+        ],
+        "n_domains": 3,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_quality_compensation",
+            "domain": "D15",
+            "weighted_degree": 6.175,
+            "betweenness": 0.035472
+          },
+          {
+            "table": "jf_assign_responsibility",
+            "domain": "D06",
+            "weighted_degree": 2.7,
+            "betweenness": 0.014275
+          },
+          {
+            "table": "jf_expense_subject",
+            "domain": "D06",
+            "weighted_degree": 2.3,
+            "betweenness": 0.007164
+          },
+          {
+            "table": "jf_quality_sales_mapping",
+            "domain": "D15",
+            "weighted_degree": 1.55,
+            "betweenness": 0.0
+          },
+          {
+            "table": "jf_customer_complaints_bak",
+            "domain": "D08",
+            "weighted_degree": 1.15,
+            "betweenness": 0.0
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "5",
+        "domains": [
+          "D01",
+          "D03",
+          "D04",
+          "D05",
+          "D08",
+          "D09",
+          "D10",
+          "D11"
+        ],
+        "n_domains": 8,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_customer",
+            "domain": "D08",
+            "weighted_degree": 73.6,
+            "betweenness": 0.408616
+          },
+          {
+            "table": "jf_contract_quota_customer",
+            "domain": "D03",
+            "weighted_degree": 12.8,
+            "betweenness": 0.007622
+          },
+          {
+            "table": "jf_customer_level",
+            "domain": "D08",
+            "weighted_degree": 7.475,
+            "betweenness": 0.007982
+          },
+          {
+            "table": "jf_contract_strategic_agreement",
+            "domain": "D03",
+            "weighted_degree": 7.05,
+            "betweenness": 0.014302
+          },
+          {
+            "table": "jf_sales_order_quota_usage_record",
+            "domain": "D01",
+            "weighted_degree": 5.525,
+            "betweenness": 0.0
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "6",
+        "domains": [
+          "D04",
+          "D05",
+          "D06",
+          "D07"
+        ],
+        "n_domains": 4,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_fee_item",
+            "domain": "D06",
+            "weighted_degree": 27.375,
+            "betweenness": 0.072972
+          },
+          {
+            "table": "jf_fee_bill",
+            "domain": "D06",
+            "weighted_degree": 12.925,
+            "betweenness": 0.028246
+          },
+          {
+            "table": "jf_invoice_application",
+            "domain": "D05",
+            "weighted_degree": 12.625,
+            "betweenness": 0.012292
+          },
+          {
+            "table": "jf_receivable_claim",
+            "domain": "D04",
+            "weighted_degree": 12.1,
+            "betweenness": 0.030718
+          },
+          {
+            "table": "jf_collection_notice",
+            "domain": "D04",
+            "weighted_degree": 12.075,
+            "betweenness": 0.024129
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "8",
+        "domains": [
+          "D01",
+          "D11"
+        ],
+        "n_domains": 2,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_coupon_customer",
+            "domain": "D11",
+            "weighted_degree": 8.775,
+            "betweenness": 0.014302
+          },
+          {
+            "table": "jf_trial_cut_discount_activity",
+            "domain": "D11",
+            "weighted_degree": 7.35,
+            "betweenness": 0.021439
+          },
+          {
+            "table": "jf_coupon",
+            "domain": "D11",
+            "weighted_degree": 6.75,
+            "betweenness": 0.024305
+          },
+          {
+            "table": "jf_coupon_detail",
+            "domain": "D11",
+            "weighted_degree": 3.875,
+            "betweenness": 0.007164
+          },
+          {
+            "table": "jf_sales_order_discount",
+            "domain": "D01",
+            "weighted_degree": 3.45,
+            "betweenness": 0.00841
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "10",
+        "domains": [
+          "D01",
+          "D02",
+          "D03",
+          "D09",
+          "D14",
+          "D15",
+          "D17",
+          "D18"
+        ],
+        "n_domains": 8,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_reservation_stock",
+            "domain": "D02",
+            "weighted_degree": 12.15,
+            "betweenness": 0.031847
+          },
+          {
+            "table": "jf_quality_standard",
+            "domain": "D15",
+            "weighted_degree": 11.9,
+            "betweenness": 0.079692
+          },
+          {
+            "table": "jf_quotation_application",
+            "domain": "D02",
+            "weighted_degree": 8.05,
+            "betweenness": 0.02848
+          },
+          {
+            "table": "jf_project_initiation_analysis",
+            "domain": "D18",
+            "weighted_degree": 6.975,
+            "betweenness": 0.081201
+          },
+          {
+            "table": "jf_sales_order_cus",
+            "domain": "D01",
+            "weighted_degree": 5.825,
+            "betweenness": 0.04674
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      },
+      {
+        "community_id": "11",
+        "domains": [
+          "D07",
+          "D09",
+          "D14"
+        ],
+        "n_domains": 3,
+        "top_members_by_weighted_degree": [
+          {
+            "table": "jf_return_repair_order",
+            "domain": "D07",
+            "weighted_degree": 12.175,
+            "betweenness": 0.063587
+          },
+          {
+            "table": "jf_goods_detail",
+            "domain": "D09",
+            "weighted_degree": 4.25,
+            "betweenness": 0.008511
+          },
+          {
+            "table": "jf_return_repair_packaging",
+            "domain": "D07",
+            "weighted_degree": 3.85,
+            "betweenness": 0.000808
+          },
+          {
+            "table": "jf_package_paper_tube",
+            "domain": "D14",
+            "weighted_degree": 3.075,
+            "betweenness": 0.002303
+          },
+          {
+            "table": "jf_package_plastic_bag",
+            "domain": "D14",
+            "weighted_degree": 3.075,
+            "betweenness": 0.002303
+          }
+        ],
+        "explanation": "混合多域：由桥接表/枢纽（betweenness）+ 跨域边解释；属结构涌现信号，不覆盖 00 域归属"
+      }
+    ],
+    "cross_domain_edges": 262,
+    "false_coupling_note": "同名异指向假耦合团(05 B-4)/低置信(semantic/unconfirmed)边已在 communities 双硬门(conf≥0.45 + 存疑排除)剔除，入算法=0；本对照不含此类短路连边伪社区"
+  },
+  "verdict": {
+    "nmi_arithmetic": 0.59049,
+    "alignment_band": "low(<0.6)",
+    "note": "结构社区与业务域分组整体方向一致与否由 NMI 量化；具体拆/合差异见 diff_clusters_explainable，均不覆盖 00 权威分组。",
+    "n_split_domains": 19,
+    "n_mixed_communities": 9
+  }
+}

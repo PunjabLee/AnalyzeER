@@ -29,8 +29,8 @@
 | M0 | 范围与 Schema 契约定稿 | rag-schema-architect | ✅ **已过门并提交**（P1 修复轮**未触及 M0 产物**：`graphrag/spec/` 零改动、契约仍冻结） | `reports/eval-M0.md`（PASS，`a917ef8`）+ `reports/audit-M0.md`（无 P0）+ 交付 `7074698` |
 | M1 | L0 图装载 + L1 确定性检索 | rag-knowledge-loader | ✅ **已过门并提交**（**含 P1 修复轮已过门提交**） | `reports/eval-M1.md`（PASS，`888e7c6`）+ `reports/audit-M1.md`（无 P0）+ P1 修复轮 `reports/eval-P1fix.md`（PASS，`18d383a`）；交付＝收尾提交 + `fix(rag): CodeReview P1 修复…` |
 | M2 | 字段级·引用/结构级血缘 | rag-lineage-builder | ✅ **已过门并提交**（**含 P1 修复轮已过门提交**） | `reports/eval-M2.md`（PASS，`625e6a3`）+ `reports/audit-M2.md`（无 P0/P1，6 项 P2）+ P1 修复轮 `reports/eval-P1fix.md`（PASS，`18d383a`，4 P1 全闭合）；交付重生成 **499 边 / 110 队列 / 默认可见 440** |
-| M3 | L2 社区/全局分析层 | rag-community-analyst | 🟡 **就绪·待委派**（上游 M2 含 P1 修复轮已过门提交；移交要点见 M3 卡） | — |
-| M4 | 结构语义层 + 可选 NL 前端 | rag-semantic-nl-frontend | 未开始 | — |
+| M3 | L2 社区/全局分析层 | rag-community-analyst | ✅ **已过门并提交**（首轮即过门，无 P1 返工） | `reports/eval-M3.md`（PASS，`0532561`）+ 交付 `graphrag/community/` 与 `graphrag/data/meta/community_*`（17 社区 / NMI 0.59049 / kept 821→477 表对 / 排除 161 / 孤立 A 表 75 / 75 passed）；遗留 3 项 P2 移交 M4（见 M3 卡） |
+| M4 | 结构语义层 + 可选 NL 前端 | rag-semantic-nl-frontend | 🟡 **就绪·待委派**（上游 M3 已过门提交；M3 遗留 P2 须承接，见 M3/M4 卡） | — |
 | G·A | 横切门禁 + 范围审计 | rag-eval-gate / rag-scope-auditor | 就绪（随里程碑触发） | `graphrag/reports/` |
 
 ---
@@ -133,7 +133,9 @@
   4. UC6 按域问答达 `spec/eval-baseline.md` 定义的黄金集基线（阈值 `[待确认]`）、可回溯。
   5. 依赖与选型：Louvain/Leiden 实现（C-2b 实测 `python-louvain` 未安装 / `networkx 3.7` 已装）须在交付中写明实际所用；GDS 类图库能力缺口标 `[待确认]`，不得预设。
 - **回退规则**：未做置信过滤即跑社区 → 判不过门重跑；涌现簇无解释 → 降级为"对照观察"而非发现物；全局摘要出现无出处实体 → 回退 §4.2 硬约束重做；社区层若把结论建立在 `dam_*`/外部平台 → P0 阻断。
-- **状态**：🟡 **就绪·待委派** — 上游 M2（含 P1 修复轮）已过门提交：`load_graph_with_lineage()` 可只读消费合并图；进入社区算法的**默认可见边 = 440**（`confidence≥0.45` 且 `!has_uncertain`；低置信 59 条与一切存疑/队列项**入算法须 = 0**）。依赖：`python-louvain` **未装** → 退化 `networkx 3.7 greedy_modularity_communities`（实际所用须写明）；涌现簇须与 `00` 手工 18 域基线 **NMI/映射对照且不覆盖权威分组**。黄金集 `graphrag/eval/golden/` 仍未落地，阈值保持 `[待确认]`。
+- **状态**：✅ **已过门并提交** — `eval-M3.md`（**PASS，`0532561`**：六项硬门以原始 `l0_graph.json`/`lineage_edges.jsonl` 独立复算闭合、与自报零差异、无 P1 返工）。交付＝`graphrag/community/`（`communities/community_summary/global_analysis/nmi_vs_baseline/summarizer` + `tests/test_m3_community.py` 19 项）+ `graphrag/data/meta/community_{result,edges,profiles,nmi_vs_baseline,global_analysis}.{json,jsonl}`；`out/community/`、`l0_*`、pyc、`.tmp/` 依 C-10 **不入库**。
+  **实测取值（编排者回读产物，非照抄）**：社区数＝**17**（`networkx.greedy_modularity_communities`，weight=Σconf、resolution=1.0；`python-louvain`/`igraph`/`leidenalg`/`sklearn` 均未装且未 `pip install`）；**NMI(arithmetic)=0.590490**（geometric 0.592354 / max 0.547115），档位 `low(<0.6)`，**19 拆 / 9 混**；融合图 **274 节点 / 477 加权表对**；**入算法 kept=821**（两端 A 级实物、conf≥0.45、非存疑非自环，泄漏 0）；**排除合计 161**＝REL 低置 **64** + REF 低置 **59** + 存疑 **7** + 跨级(B 端) **13** + 自环 **18**（REF 4 条带 explicit_pair + REL 14）；`isolated_a_tables`＝**75**（入图 274 + 孤立 75 = 349 ✓）；`community_role=analysis_view_only`、`authoritative_domain_source=00 §四`（**不覆盖 18 域权威分组**）；LLM 摘要 `summarizer.ENABLED=False`，两入口 `raise NotImplementedError`（**stub 禁用、未调 LLM**）。`pytest graphrag`＝**75 passed**（编排者独立复跑）；锚守恒 RELATES_TO 483 / REFERENCES 499-440-59 / A349 / Issue27 / ξ456 / Σ1322 / FK=0 全等。
+  > **M3 遗留 P2（非阻断，移交 M4 承接；不重过 M3 门）**：① **P2-A** 75 张孤立 A 表**名单未落盘**——现仅存计数 75 与 UC6 每域 `isolated_tables` 分布（`_export()` 过滤了 `isolated_a_list`）；建议补 `graphrag/data/meta/community_isolated_a.json`（可确定性复算）。② **P2-C** 黄金集 `graphrag/eval/golden/` **仍未落地**（唯一写入者＝`rag-eval-gate`）→ UC6 无基线可报；**M4 过门前由 eval-gate 落地题目集并补测**，阈值保持 `[待确认]`、**只报命中率不判达标**（§1.5 / 移交要点 4）。③ **P2-B** 9 个混合簇现为量化线索+模板句，建议补 `out/community/uncertain.md` 将其统一标注**「对照观察（非发现物）」**或逐簇给个性化论证（NMI low 档下不得表述为权威发现）。
 - **M3 移交要点（P1 修复轮后由编排者登记；委派时须逐条落到交付与验收）**：
   1. **依赖选型定调＝不引入 `python-louvain`**：依 C-2b/N-3 实测（`import community` 无、`networkx 3.7` 有），本期社区检测**只用 `networkx.algorithms.community.greedy_modularity_communities`**；交付须在 manifest 写明**实际所用算法与参数**，Louvain/Leiden 仍留作 `spec/stack-options.md` 的 `[待确认]` 候选——**不得**默认已具备、**不得**自行 `pip install` 新依赖（如需引入：回 M0 出 amendment 并重过 eval-gate）。
   2. **社区输入边集合（硬门，可复算）**：仅允许 M2 **默认可见集 440 条 `REFERENCES`**（等价 `load_graph_with_lineage()` 默认参 `{min_conf:0.45, show_uncertain:False}`）进入社区算法；须自证「进入算法的低置信边数 = **0**、存疑/队列项 = **0**」并记录**被排除计数**（59 低置信 + 队列 110 项不参与）；M1 既有边（RELATES_TO 483 / IS_COLUMN_OF 6428 等）按 M1 口径只读合并，M3 不改写上游产物、**不改 M2 的 `review_queue.json`**（自身不确定项写 `out/community/uncertain.md`）。
@@ -153,7 +155,7 @@
   4. 黄金集端到端回归（M0 构造规范 + eval-gate 持有的题目）：Top-3 命中对齐 `[待确认]` 阈值并记录实测值；关系类回答有出处率 100%（§1.5）。
   5. 时延实测并记录：单跳 P95 / 多跳 P95 对照 §1.5 阈值（`<2s`/`<8s`，方案标 `[待确认]` → 报告须注明"阈值待业务方确认"）。
 - **回退规则**：NL 层臆造关系/绕过过滤 → 收回 NL 层，仅交付结构化 API（R-5 定位降格）；语义绑定无出处 → 降级 `[待确认]`；若被要求做指标层/ETL 血缘 → 判边界越位并停止该项，标注超范围。
-- **状态**：未开始
+- **状态**：🟡 **就绪·待委派** — 上游 M3 已过门提交（`eval-M3` PASS，`0532561`）；`graphrag/community/` + `data/meta/community_*` 可作为 L2 只读输入。**须承接 M3 遗留 3 项 P2**（见 M3 卡）：P2-A 补 `community_isolated_a.json`；P2-B 混合簇降级「对照观察（非发现物）」；P2-C `graphrag/eval/golden/` 由 eval-gate 落地题目集后补测 UC6 实测命中率（阈值 `[待确认]`、只报不判达标）。
 
 ---
 
@@ -244,6 +246,7 @@
 | 2026-10-05 | **M1 收尾（编排者单点）**：① `.gitignore` 补 `__pycache__/`、`*.pyc`、`/.tmp/`、`graphrag/data/l0_{graph.json,edges.jsonl,index.db}`（C-10 可重建产物不入库；既有项不动）；② §A 勘误 → ξ **456/12**（ξ′ 443/10、malformed 13）、03 表头 **11/292**，并移除写死 HEAD SHA；③ 代提 `reports/audit-M0.md`、`reports/audit-M1.md` 精简存档；④ §0.1 与 M0/M1/M2 卡状态更新，**M2 转「就绪·待委派」** | 本次提交 |
 | 2026-10-05 | **M2 过门+收尾（编排者单点）**：`eval-M2`（PASS，`625e6a3`）+ `audit-M2`（无 P0/P1，6 项 P2）；P2-3 命名漂移裁决＝**改卡不改产物名**（`data/references_*`→`data/meta/lineage_*`，M2 卡/§4 同步更正，`out/lineage/` 标本地镜像）；代提 `reports/audit-M2.md`；§0.1 M2→已过门并提交、M3→就绪·待委派 | `ae296d9`（交付）/ `625e6a3`（报告） |
 | 2026-10-05 | **CodeReview P1 修复轮收尾（编排者单点）**：① `eval-P1fix`（**PASS**，4 个 P1 全闭合、M1 六锚守恒、两次跑测逐字节确定）由 eval-gate 自提 → `18d383a`；② 编排者按 §4 路径逐路径提交 M1/M2 侧修复代码与重生成产物（`ingest/{config,relation_parser}.py`、`store/{graph,fts}.py`、`search/l1.py`、`lineage/*`、`data/meta/lineage_*`、`data/review_queue.json`）＝`fix(rag): CodeReview P1 修复…`，**56 passed**；③ 台账数值**就地勘误 514→499 边 / 97→110 队列 / 446→440 默认可见**（门文本按历史保真原则以 superseded 注记处理），§0.1 M0–M2 标注「含 P1 修复轮已过门提交」（M0＝P1 未触及 `spec/`），§A 补 A-3/A-4 产物与测试基线；④ **M3 移交要点入台账**（不引入 python-louvain→`greedy_modularity_communities`、社区输入边=440 硬门、涌现簇不覆盖 18 域、黄金集首轮只报基线） | 本次提交 |
+| 2026-10-05 | **M3 过门+收尾提交（编排者单点）**：`eval-M3`（**PASS，`0532561`**，六硬门原始数据独立复算、零差异、无 P1 返工）；逐路径提交 `graphrag/community/` + `graphrag/data/meta/community_*`（17 社区 / NMI 0.59049 / kept 821→477 表对 / 排除 64+59+7+13+18=161 / 孤立 A 表 75 / `pytest`=75 passed）；`out/community/`、`l0_*`、pyc、`.tmp/` 依 C-10 不入库（`git add --dry-run` 已核）；§0.1 与 M3/M4 卡状态更新，**M4 转「就绪·待委派」**，登记 M3 遗留 3 项 P2（P2-A 名单落盘 / P2-B 混合簇降级 / P2-C 黄金集）移交 M4 | 本次提交 |
 
 ---
 
@@ -270,7 +273,8 @@
 | 运行时可用性 | Python **3.14.6**；SQLite **3.50.4**，FTS5 `porter`/`trigram` 建表通过；`networkx 3.7` 有、`community`(python-louvain) 无 | `python3 --version`；`:memory:` 建 `fts5` 虚拟表；`import` 探测 | C-1/C-2/C-2b/N-3 |
 | Git | 分支 `chore/rag`，基点 `4a5485a`（未合 `master`）；**HEAD 不在台账写死**（快照必腐化）→ **以 `git log -1` 现查为准** | `git branch --show-current` / `git log -1 --oneline` | §0 分支纪律 |
 | **A-3 · M2 血缘产物基线（P1 修复后）** | `references_total`＝**499**；默认可见（`confidence≥0.45` 且 `!has_uncertain`）＝**440**＝M3 社区输入集；低置信隐藏 **59**；`has_uncertain`/`unconfirmed` 边＝**0**；自环边 **4**（100% 带 `explicit_pair`；修复前 10 条/违例 6）；队列 items＝**110**（by_kind Σ=110）；`max(confidence)`＝**0.90**（≤0.95 上限） | `wc -l < graphrag/data/meta/lineage_edges.jsonl`；逐行 JSON 解析按门计数；`python3 -c "import json;print(len(json.load(open('graphrag/data/review_queue.json'))['items']))"` | §5.2-1、M2/M3 卡、`eval-P1fix` §1/§2 |
-| A-4 · 测试基线 | `python3 -m pytest graphrag -q` ＝ **56 passed**（含 `ingest/tests/test_m1.py`、`lineage/tests/test_m2_lineage.py`） | 同命令 | C-8 过门前置、`eval-P1fix` §2 |
+| A-4 · 测试基线 | `python3 -m pytest graphrag -q` ＝ **75 passed**（M3 后；`ingest/tests` 20 + `lineage/tests` 36 + `community/tests` 19；P1 修复轮为 56 passed，M3 增量测试后升至 75） | 同命令 | C-8 过门前置、`eval-P1fix` §2、`eval-M3` §0 |
+| **A-5 · M3 社区产物基线** | `community_result.json`：`community_count`＝**17**；`ingestion.kept_edges`＝**821**；`graph_stats`＝节点 **274** / 加权表对 **477** / `isolated_a_tables` **75**（274+75=349）；`edge_gate`＝REF 499/440/59/0；排除合计 **161**（REL below-conf 64 + REF below-conf 59 + uncertain 7 + non_A 13 + self_loop 18=REF4+REL14）；`nmi.nmi_arithmetic`＝**0.590490**（geometric 0.592354 / max 0.547115，档 `low<0.6`，19 拆/9 混）；`community_role`＝`analysis_view_only`；算法＝`networkx.greedy_modularity_communities`（weight=Σconf, resolution=1.0）；LLM `summarizer.ENABLED=False` | 逐字段 JSON 解析 + `wc -l < graphrag/data/meta/community_edges.jsonl`(=821) + 独立 NMI 手写实现交叉验算 | §8.1(M3)、§5.2-1、`eval-M3` §1/§3 |
 
 ### A-1 · `er-model/01-ER图/*` 关系连接符实测计数
 
