@@ -1,0 +1,55 @@
+{
+  "milestone": "M4",
+  "artifact": "P2-C（交接 M3 → eval-gate）",
+  "generator": "graphrag/semantic/m3_p2_handoff.py",
+  "role": "handoff_only",
+  "golden_set_owner": "rag-eval-gate（graphrag/eval/golden/，唯一写入者；本模块不出题、不判阈值）",
+  "nl_entry_api": {
+    "callable": "graphrag.nl.nl_router.NLRouter().answer(query, **overrides)",
+    "returns": "结构化答案 {query,intent,uc,matched_params,gates,answer,sources,refused,disclaimer,llm_synthesis}",
+    "golden_hook_signature": "answer(query, min_confidence=0.45, show_uncertain=False, max_hops=3, ...) → dict；对每题 gold 断言由 eval-gate 施加",
+    "intent_coverage": [
+      {
+        "intent": "hub_coupling",
+        "uc": "全局"
+      },
+      {
+        "intent": "community_rollup",
+        "uc": "UC6"
+      },
+      {
+        "intent": "impact_lineage",
+        "uc": "UC4/UC5"
+      },
+      {
+        "intent": "find_relations",
+        "uc": "UC3"
+      },
+      {
+        "intent": "describe_column",
+        "uc": "UC2"
+      },
+      {
+        "intent": "find_table",
+        "uc": "UC1"
+      }
+    ]
+  },
+  "defaults": {
+    "min_confidence": 0.45,
+    "show_uncertain": false,
+    "max_hops": 3
+  },
+  "llm_synthesis": {
+    "enabled": false,
+    "stage": "接口 stub（graphrag/nl/llm_synthesis.py）",
+    "status": "[待确认·需 LLM]"
+  },
+  "boundary": "指标语义层/KPI/术语表超范围未实现；NL 只调 L1/L2、不绕置信/存疑门、不生成无出处关系（graphrag/nl 与 semantic 测试锁定）。",
+  "smoke_sample": {
+    "query": "jf_customer 关联哪些表？",
+    "intent": "find_relations",
+    "uc": "UC3",
+    "refused": false
+  }
+}
