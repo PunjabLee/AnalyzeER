@@ -19,6 +19,7 @@ from collections import defaultdict
 import networkx as nx
 
 from .communities import build_subgraph, detect_communities, community_metrics
+from . import source_fingerprint
 
 _BRIDGE_TOP = 8      # 桥接表展示上限（确定性截尾）
 _HUB_TOP = 5         # 每社区枢纽展示上限
@@ -132,6 +133,7 @@ def run(write: bool = True) -> dict:
         "authoritative_domain_source": "00 §四 (M1 graph node.domain)",
         "community_role": "analysis_view_only",
     }
+    source_fingerprint.embed(out, write=write)
     if write:
         from .communities import DATA_META_DIR, OUT_DIR
         payload = json.dumps(out, ensure_ascii=False, indent=2)

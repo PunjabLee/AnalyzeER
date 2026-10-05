@@ -10,7 +10,7 @@
 | `find_table` | UC1 | `L1Search.find_tables`（FTS/BM25 + 域/tier 过滤） |
 | `describe_column` | UC2 | `L1Search.columns_of` / `tables_with_column` |
 | `find_relations` | UC3 | `L1Search.relations_of`（1 跳邻居，附证据级/出处） |
-| `impact_lineage` | UC4/UC5 | `L1Search.traverse`（表级多跳；out=影响/下游，in=血缘/上游） |
+| `impact_lineage` | UC4/UC5 | `L1Search.traverse`（表级多跳；out=影响/下游，in=血缘/上游，**方向不可判→both 回退+反问提示，P2-4**） |
 | `community_rollup` | UC6 | `L1Search.domain_summary` + L2 `global_analysis.q3` |
 | `hub_coupling` | 全局 | L2 `global_analysis.q1`（枢纽）/ `q2`（最紧耦合） |
 
@@ -18,21 +18,34 @@
 - 默认门 `confidence≥0.45` / `show_uncertain=False` / `max_hops≤3`（承 `CONFIDENCE_DEFAULT_MIN`
   / `MAX_HOPS`）；`max_hops` 超 3 一律**钳制到 3**（预算护栏，可复现）。
 - 关系类回答 100% 带 `source_file/quote_hash` 出处；无出处即**不输出**该关系。
-- 未定位到实体/无路径 → `refused=True`，答“文档未记载 / [待确认]”，**拒绝臆造兜底**（§6）。
+- 未定位到实体/无路径 → `refused=True`，答"文档未记载 / [待确认]"，**拒绝臆造兜底**（§6）。
+- **refused ⇒ `sources==[]`（P2-3，u6-03 翻转）**：域不存在等拒答分支**不追加任何出处**
+  （含 `Domain` stub），兑现黄金集契约。
+- **intent 白名单（P2-4）**：`answer(intent=...)` 非法 id 直接 `ValueError`（不再
+  AttributeError/KeyError）；`out_of_scope` 为内部守卫态，不可手工传入。
 - 指标/KPI/术语表**超范围**：本层不识别、不作答（`OUT_OF_SCOPE`）。
 - 方向语义**显式声明**（L1 表级 RELATES_TO：`out`=下游/影响、`in`=上游/血缘；全库 0 FK，均推断）。
+- **P1-2 消费校验**：读 L2 全局结果处接住上游 `input_fingerprint`（生产者由 M3/eval 嵌入）。
+  判定语义以 `semantic/fingerprint.py` 策略表为**单一事实源**：未声明基准（默认）→ 放行留痕/
+  观测记录，不破坏渐进上线现状；**基准一旦声明**（显式入参或 env
+  `GRAPHRAG_EXPECTED_INPUT_FINGERPRINT`）→ 不一致**或字段缺失（无从校验）均 `InputFingerprintMismatch`
+  fail-fast**（strict-on-enable，拒绝"开了校验却拿未验证产物"的假安全感）。本层只读校验，不改 M3 文件。
 """
 
 from __future__ import annotations
 
+import logging
 import re
+import sqlite3
 from collections import defaultdict
+from pathlib import Path
 
 from ..ingest.config import CONFIDENCE_DEFAULT_MIN, MAX_HOPS, DOMAIN_DECLARED
 from ..search.l1 import L1Search
 from ..store.loader import load_graph_json
 from ..store.fts import FTSIndex, FTSQueryError
 from ..ingest.config import FTS_DB, L0_GRAPH_JSON
+from ..semantic.fingerprint import verify_input_fingerprint
 from ..semantic.semantic_layer import DOMAIN_NAMES, OUT_OF_SCOPE
 
 _NO_FK_DISCLAIMER = (
@@ -64,9 +77,38 @@ INTENTS = [
 _INTENT_BY_ID = {i["id"]: i for i in INTENTS}
 _PRIORITY = [i["id"] for i in INTENTS]      # 并列时靠前优先
 
-# 方向关键词（L1 表级 RELATES_TO 遍历语义）
-_KW_DOWNSTREAM = ["影响", "波及", "下游", "改了", "变更", "删除后", "会怎样", "谁依赖", "impact"]
-_KW_UPSTREAM = ["血缘", "来源", "上游", "依赖谁", "来自", "引用了谁", "lineage"]
+# 方向关键词（L1 表级 RELATES_TO 遍历语义；**P2-4 扩充高频词 + 最长匹配优先**）
+#   out=下游/影响（谁依赖本表、改了会波及谁）；in=上游/血缘（本表依赖/属于/来自谁）
+_DIRECTION_KW: list[tuple[str, str]] = sorted({
+    # 下游 / 影响（out）
+    "影响": "out", "波及": "out", "下游": "out", "改了": "out", "变更": "out",
+    "删除后": "out", "会怎样": "out", "谁依赖": "out", "谁引用": "out", "impact": "out",
+    # 上游 / 血缘（in）
+    "血缘": "in", "来源": "in", "上游": "in", "来自": "in", "属于": "in",
+    "依赖": "in", "依赖谁": "in", "引用了谁": "in", "上游来源": "in", "lineage": "in",
+}.items(), key=lambda kv: (-len(kv[0]), kv[0]))
+
+
+def _resolve_direction(query: str) -> str | None:
+    """方向词判定（P2-4）：最长匹配优先；同长度两向并存 → 'ambiguous'（不猜）。
+
+    返回 'out' / 'in' / 'ambiguous' / None（无方向词）。UC4/UC5 对 'ambiguous'/None
+    **回退 both（无向邻域）+ 反问提示**，不再默认 out。
+    """
+    low = query.lower()
+    best_len = 0
+    dirs: set[str] = set()
+    for kw, d in _DIRECTION_KW:
+        if kw in query or kw in low:
+            if len(kw) > best_len:
+                best_len, dirs = len(kw), {d}
+            elif len(kw) == best_len:
+                dirs.add(d)
+    if not dirs:
+        return None
+    if len(dirs) == 1:
+        return dirs.pop()
+    return "ambiguous"
 
 # 检索净化用：CJK 运行串（承 fts._CJK_RUN_RE 同族，用于抽取内容词）
 _CJK_RUN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+")
@@ -91,10 +133,14 @@ _METRIC_TERMS = {
 
 
 class NLRouter:
-    def __init__(self, graph=None, fts=None):
+    def __init__(self, graph=None, fts=None,
+                 expected_input_fingerprint: str | None = None):
         self.g = graph if graph is not None else load_graph_json(L0_GRAPH_JSON)
         self.fts = fts if fts is not None else self._open_fts()
         self.l1 = L1Search(self.g, self.fts)
+        # P1-2 消费校验基准（生产者指纹由 M3/eval 嵌入；缺省→只观测不判脏）
+        self.expected_input_fingerprint = expected_input_fingerprint
+        self.input_fingerprint_checks: dict[str, dict] = {}
         # 参数字典（确定性、来自 M1 图）
         self.table_names = {n["name"] for n in self.g.nodes.values()
                             if n["label"] == "Table"}
@@ -104,19 +150,53 @@ class NLRouter:
         self._name_to_code = {v: k for k, v in DOMAIN_NAMES.items()}
         self._l2 = None                       # 全局分析缓存（懒计算）
 
+    # ---------------------------------------------------------------- FTS 打开（P2-6 收窄）
     @staticmethod
     def _open_fts():
-        try:
-            return FTSIndex(FTS_DB, rebuild=False)
-        except Exception:                     # 索引缺失 → 仅图查询（find_table 返回 note）
+        """区分「无索引」与「索引损坏」——P2-6 收窄旧版 `except Exception: return None`。
+
+        三分（确定性、可复现）：
+        - 文件不存在 → `None`（info 留痕；仅图查询，find_table 附 note）；
+        - 文件存在但索引表未建 → `None`（info 留痕；语义仍是"无索引"）；
+        - 损坏（非库/镜像坏）或其它 sqlite 异常 → `logging.warning` 留痕后**原样抛出**
+          （不再把"索引损坏"伪装成"无索引"，拒绝静默降级）。
+        """
+        log = logging.getLogger(__name__)
+        db = Path(FTS_DB)
+        if not db.exists():
+            log.info("FTS 索引文件不存在（%s）→ 仅图查询", db)
             return None
+        try:
+            fts = FTSIndex(str(db), rebuild=False)
+            rows = {r[0] for r in fts.conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+        except FileNotFoundError as exc:          # 存在性检查后消失/不可读：无索引语义
+            log.info("FTS 索引文件不可读（%s）→ 仅图查询", exc)
+            return None
+        except sqlite3.DatabaseError as exc:      # 损坏（含 malformed / 非库文件）
+            log.warning("FTS 索引损坏（%s）：%s —— 与『无索引』区分，不静默降级", db, exc)
+            raise
+        missing = {"nodes", "nodes_fts", "nodes_fts_cjk"} - rows
+        if missing:                               # 空库/未建索引：仍属"无索引"
+            log.info("FTS 索引未建（%s 缺表 %s）→ 仅图查询", db, sorted(missing))
+            return None
+        return fts
 
     # ---------------------------------------------------------------- L2 懒加载
     def l2(self) -> dict:
         if self._l2 is None:
             from ..community.global_analysis import global_analysis
-            self._l2 = global_analysis(write=False)
+            res = global_analysis(write=False)
+            # P1-2 消费校验（接口预留）：接住 M3 将嵌入的 input_fingerprint；
+            # 无基准→放行留痕/只观测；有基准（strict-on-enable）→不一致或缺字段即 fail-fast。
+            self.input_fingerprint_checks["global_analysis"] = verify_input_fingerprint(
+                res, name="M3 global_analysis（community 全局层）",
+                expected=self.expected_input_fingerprint)
+            self._l2 = res
         return self._l2
+
+    def _fp_check(self) -> dict | None:
+        return self.input_fingerprint_checks.get("global_analysis")
 
     # ---------------------------------------------------------------- 超范围守卫
     @staticmethod
@@ -163,14 +243,9 @@ class NLRouter:
         for name, code in self._name_to_code.items():
             if name and name in query:
                 domains.add(code)
-        # 方向
-        direction = None
-        if any(k in query for k in _KW_UPSTREAM):
-            direction = "in"
-        if any(k in query for k in _KW_DOWNSTREAM):
-            direction = "out"
+        # 方向（P2-4：最长匹配优先，可能为 'ambiguous'；由 UC4/UC5 决定是否回退 both）
         return {"tables": tables, "columns": columns, "dotted": dotted,
-                "domains": sorted(domains), "direction": direction}
+                "domains": sorted(domains), "direction": _resolve_direction(query)}
 
     # ---------------------------------------------------------------- 检索净化
     def _clean_search(self, query: str) -> str:
@@ -211,6 +286,11 @@ class NLRouter:
                show_uncertain: bool = False, max_hops: int = MAX_HOPS,
                intent: str | None = None) -> dict:
         assert query and query.strip(), "空查询"
+        # P2-4：intent 白名单校验（非法 id 明确 ValueError，不再 AttributeError/KeyError）
+        if intent is not None and intent not in _INTENT_BY_ID:
+            raise ValueError(
+                f"未知 intent={intent!r}；白名单={sorted(_INTENT_BY_ID)}。"
+                "None=自动分类；`out_of_scope` 为超范围守卫内部态，不可手工指定。")
         hops = min(max(1, int(max_hops)), MAX_HOPS)   # 预算护栏：钳制 ≤3
         it, scores = (intent, {"override": 1}) if intent else self.classify(query)
         params = self.extract(query)
@@ -308,21 +388,35 @@ class NLRouter:
         if t is None:
             return {"answer": None, "refused": True, "sources": [],
                     "note": "未定位到表，无法遍历血缘/影响（[待确认]，不臆造）"}
-        direction = params["direction"] or "out"
-        semantics = ("影响/下游（谁依赖本表）" if direction == "out"
-                     else "血缘/上游（本表依赖谁）")
-        r = self.l1.traverse(t, direction=direction, max_hops=gates["max_hops"],
-                             min_conf=gates["min_confidence"],
-                             show_uncertain=gates["show_uncertain"])
+        # P2-4：方向不可判（无方向词/两向歧义）→ **回退 both + 反问提示**，不再默认 out
+        req = params["direction"]
+        direction = req if req in ("in", "out") else "both"
+        semantics = {
+            "out": "影响/下游（谁依赖本表）",
+            "in": "血缘/上游（本表依赖谁）",
+            "both": "无向邻域（方向未判定，不默认下游）",
+        }[direction]
+        res = {"answer": self.l1.traverse(t, direction=direction,
+                                          max_hops=gates["max_hops"],
+                                          min_conf=gates["min_confidence"],
+                                          show_uncertain=gates["show_uncertain"]),
+               "resolved_via": via,
+               "direction_semantics": direction + " = " + semantics}
+        if req not in ("in", "out"):
+            why = "（同词两向歧义）" if req == "ambiguous" else "（未出现方向词）"
+            res["note"] = (f"方向无法判定{why}：已回退 both 无向邻域（不默认下游）；"
+                           "请显式「影响/下游」或「血缘/上游」以精确作答（反问式提示）")
+        r = res["answer"]
         srcs = [{"kind": "traverse_edge", "from": p["from"], "to": p["to"],
                  "hop": p["hop"], "confidence": p["confidence"],
                  "evidence_level": p["evidence_level"],
                  "file": p["source_file"], "quote_hash": p["quote_hash"]}
                 for p in r.get("paths", [])]
-        return {"answer": r, "resolved_via": via,
-                "direction_semantics": direction + " = " + semantics,
-                "refused": r.get("exists") and r.get("edge_traversed", 0) == 0,
-                "sources": srcs}
+        res["refused"] = bool(r.get("exists") and r.get("edge_traversed", 0) == 0)
+        res["sources"] = srcs
+        if res["refused"]:
+            res["sources"] = []                # refused ⇒ sources 为空（P2-3 契约一致）
+        return res
 
     # ------------------------------------------------------------ UC6 社区/域综述
     def _do_community_rollup(self, query, params, gates, scores) -> dict:
@@ -332,19 +426,32 @@ class NLRouter:
                     "note": "未识别到业务域（Dxx/域名）；全域综述请用 hub_coupling 或指定域"}
         # L1：域内实体/问题（权威 00 分组）
         l1_sum = self.l1.domain_summary(domain)
+        exists = bool(l1_sum.get("exists"))
         # L2：该域在全局 rollup 中的社区分布/内外边/域内枢纽
         q3 = next((row for row in self.l2()["q3_domain_rollup_uc6"]
                    if row["domain"] == domain), None)
         ans = {"domain": domain, "domain_name": DOMAIN_NAMES.get(domain),
                "l1_domain_summary": l1_sum, "l2_community_rollup": q3,
                "authoritative": "00 §四 手工分组（社区仅分析视图）"}
-        srcs = [{"kind": "Domain", "domain": domain, "file": "er-model/00-总览与分组清单.md"}]
-        if q3:
-            for h in q3["top_hub_tables"]:
-                srcs.append({"kind": "hub_table", "table": h["table"],
-                             "weighted_degree": h["weighted_degree"]})
-        refused = not l1_sum.get("exists")
-        return {"answer": ans, "refused": refused, "sources": srcs}
+        # P2-3（u6-03 根因翻转）：**仅当域真实存在**才追加 Domain 出处；
+        # refused ⇒ sources==[]，幻影域不再泄漏任何 stub 出处。
+        srcs: list[dict] = []
+        if exists:
+            srcs.append({"kind": "Domain", "domain": domain,
+                         "file": "er-model/00-总览与分组清单.md"})
+            if q3:
+                for h in q3["top_hub_tables"]:
+                    srcs.append({"kind": "hub_table", "table": h["table"],
+                                 "weighted_degree": h["weighted_degree"]})
+        refused = not exists
+        res = {"answer": ans, "refused": refused, "sources": srcs}
+        if refused:
+            res["note"] = (f"域 {domain} 未在 M1 图登记（00 §四 D01–D18/OT 之外）→ "
+                           "文档未记载 / [待确认]；refused 且不追加出处（P2-3）")
+        fp = self._fp_check()
+        if fp:
+            res["input_fingerprint_check"] = fp
+        return res
 
     # ------------------------------------------------------------ 全局 枢纽/耦合
     def _do_hub_coupling(self, query, params, gates, scores) -> dict:
@@ -372,8 +479,12 @@ class NLRouter:
         for cd in tc.get("cross_domain_coupling", [])[:5]:
             srcs.append({"kind": "cross_domain", "domains": cd["domains"],
                          "cross_domain_weight": cd["cross_domain_weight"]})
-        return {"answer": ans, "refused": False, "sources": srcs,
-                "note": "枢纽/耦合结论逐条来自 L2 结构遍历（可回溯表/边），不覆盖 00 权威域"}
+        res = {"answer": ans, "refused": False, "sources": srcs,
+               "note": "枢纽/耦合结论逐条来自 L2 结构遍历（可回溯表/边），不覆盖 00 权威域"}
+        fp = self._fp_check()
+        if fp:
+            res["input_fingerprint_check"] = fp
+        return res
 
 
 def run_demo_queries() -> list[dict]:

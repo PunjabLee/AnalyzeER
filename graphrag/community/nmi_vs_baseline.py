@@ -28,6 +28,7 @@ from collections import defaultdict
 import networkx as nx
 
 from .communities import build_subgraph, detect_communities
+from . import source_fingerprint
 
 
 # ---------------------------------------------------------------- NMI 手算
@@ -199,6 +200,7 @@ def nmi_vs_baseline(write: bool = True) -> dict:
         "diff_clusters_explainable": diffs,
         "verdict": _verdict(metrics, diffs),
     }
+    source_fingerprint.embed(out, write=write)
     if write:
         from .communities import DATA_META_DIR, OUT_DIR
         payload = json.dumps(out, ensure_ascii=False, indent=2)

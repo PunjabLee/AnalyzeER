@@ -10,6 +10,12 @@
   "a_domain_tables_total": 349,
   "coverage_equation": "274 + 75 == 349",
   "m3_crosscheck_count": 75,
+  "fingerprint_check": {
+    "artifact": "community_result.json",
+    "status": "absent_upstream_not_embedded",
+    "baseline_declared": false,
+    "note": "生产者尚未嵌入 input_fingerprint（M3/eval 侧职责）；消费侧无期望基准 → 放行留痕，不视为脏"
+  },
   "recompute_source": "graphrag/community/communities.build_subgraph() → stats['isolated_a_list']",
   "disclaimer": "社区=分析视图，00 §四 手工 18 域(+OT) 为权威；孤立 A 表仍属其 00 域，仅因无高置信结构边未入社区图（非被移除域归属）。",
   "isolated_a_tables": [

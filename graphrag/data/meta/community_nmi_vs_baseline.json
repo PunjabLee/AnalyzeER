@@ -1146,5 +1146,29 @@
     "note": "结构社区与业务域分组整体方向一致与否由 NMI 量化；具体拆/合差异见 diff_clusters_explainable，均不覆盖 00 权威分组。",
     "n_split_domains": 19,
     "n_mixed_communities": 9
+  },
+  "input_fingerprint": {
+    "algo": "sha256",
+    "files": [
+      {
+        "path": "graphrag/data/l0_graph.json",
+        "sha256": "a98c3bed23348c50ee6eb24b2a1d7aeb2a0c0f5a1f81809ee8db9f43a4d59ab5"
+      },
+      {
+        "path": "graphrag/data/meta/lineage_edges.jsonl",
+        "sha256": "15b1defd3209db8b12b862bae9b1828f655e6c165413a45ac39f182fe5c2388f"
+      }
+    ],
+    "digest": "43e78f082c25bc7528c3cb10d9f480298890eca7baee4d055883042ea1b55919",
+    "source": "graphrag/community/source_fingerprint.py"
+  },
+  "fingerprint_self_check": {
+    "status": "ok",
+    "files_checked": [
+      "graphrag/data/l0_graph.json",
+      "graphrag/data/meta/lineage_edges.jsonl"
+    ],
+    "digest": "43e78f082c25bc7528c3cb10d9f480298890eca7baee4d055883042ea1b55919",
+    "note": "write=True 产出前已对 embedding 的即时输入集断言一致（防边写边算漂移）；未注入 expected 基准（strict-on-enable 保持 dormant，激活由 eval/主线程决定）。"
   }
 }

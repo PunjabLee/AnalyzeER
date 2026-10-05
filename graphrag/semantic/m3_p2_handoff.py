@@ -15,6 +15,14 @@
   声明 `graphrag/nl/` 自然语言入口 API（六类 UC 确定性作答 + 黄金集适配签名），把题目实例
   与阈值判定留给唯一写入者 `rag-eval-gate`（`graphrag/eval/golden/`，本模块**不**出题）。
 
+P1-2（消费侧接口预留）：读取 M3 `community_result.json` 处接住生产方将新增的
+`input_fingerprint` 字段，校验语义依 `graphrag/semantic/fingerprint.py` 策略表
+（**strict-on-enable**）：本模块调用时**不声明**期望基准 → 当前（M3 尚未嵌入字段）落
+`fingerprint_check.status=absent_upstream_not_embedded` **放行留痕**并照常出产物；
+一旦编排/门禁经 `GRAPHRAG_EXPECTED_INPUT_FINGERPRINT` 注入基准，则字段缺失或与基准
+不一致都 **fail-fast**（`InputFingerprintMismatch`，拒绝拿未验证的上游作答）。
+本侧**不改 community 自有文件、不生成/改写指纹**，只读校验并留痕于自身承接产物。
+
 诚实纪律：三项均只读复用 M3 计算，不新建来源外实体/关系；产物标 `role=handoff_only`。
 """
 
@@ -24,6 +32,7 @@ import json
 from pathlib import Path
 
 from ..ingest.config import CONFIDENCE_DEFAULT_MIN, DATA_META_DIR
+from .fingerprint import verify_input_fingerprint
 from .semantic_layer import OUT_DIR   # graphrag/out/semantic（gitignored 本地镜像）
 
 # 落盘文件名（data/meta 可提交镜像 + out 镜像）
@@ -55,11 +64,16 @@ def isolated_a_tables(write: bool = True) -> dict:
 
     # 交叉校验：与 M3 已落盘 community_result.json 的计数一致（同源、非改写）
     m3_ref = None
+    fp_check = {"artifact": COMMUNITIES_RESULT, "status": "absent_file",
+                "note": "M3 计数文件不存在 → 交叉校验与指纹校验均无从执行（留痕）"}
     cr = DATA_META_DIR / COMMUNITIES_RESULT
     if cr.exists():
         m3 = json.loads(cr.read_text(encoding="utf-8"))
         m3_ref = m3["graph_stats"]["isolated_a_tables"]
         assert m3_ref == count, f"孤立 A 表计数与 M3 不一致：{count} vs {m3_ref}"
+        # P1-2：接住 M3 将嵌入的 input_fingerprint（本侧不声明基准→放行留痕；
+        # 门注入 env 基准后自动转强制：缺失/不一致均 fail-fast。不改 M3 文件）
+        fp_check = verify_input_fingerprint(m3, name=COMMUNITIES_RESULT)
     # 覆盖等式：入图节点 + 孤立 = 全部有域 A 表
     assert G.number_of_nodes() + count == len(domain_map)
 
@@ -76,6 +90,7 @@ def isolated_a_tables(write: bool = True) -> dict:
         "a_domain_tables_total": len(domain_map),
         "coverage_equation": f"{G.number_of_nodes()} + {count} == {len(domain_map)}",
         "m3_crosscheck_count": m3_ref,
+        "fingerprint_check": fp_check,
         "recompute_source": "graphrag/community/communities.build_subgraph() "
                             "→ stats['isolated_a_list']",
         "disclaimer": ("社区=分析视图，00 §四 手工 18 域(+OT) 为权威；孤立 A 表仍属其 00 域，"
@@ -173,6 +188,7 @@ if __name__ == "__main__":
         "P2-A isolated_a_count": r["isolated_a"]["isolated_a_count"],
         "P2-A coverage": r["isolated_a"]["coverage_equation"],
         "P2-A m3_crosscheck": r["isolated_a"]["m3_crosscheck_count"],
+        "P2-A fingerprint_check": r["isolated_a"]["fingerprint_check"]["status"],
         "P2-B mixed_communities": r["mixed_cluster_note"]["n_mixed_communities"],
         "P2-B note": MIXED_CLUSTER_NOTE,
         "P2-C intents": len(r["eval_handoff"]["nl_entry_api"]["intent_coverage"]),

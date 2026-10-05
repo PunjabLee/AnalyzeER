@@ -1,0 +1,1878 @@
+{
+  "milestone": "M4",
+  "artifact": "semantic_concept_graph.json",
+  "generator": "graphrag/semantic/semantic_layer.py::build_concept_graph",
+  "layer": "structural",
+  "note": "Concept/EvidenceSrc 节点 + REALIZED_BY/SUPPORTED_BY 边（结构语义叠加层）。仅 05 点名且命中实物表者建 REALIZED_BY；无同名表者 Concept.status=[待确认]。",
+  "counts": {
+    "concepts": 36,
+    "realized_by_edges": 67,
+    "supported_by_edges": 67,
+    "evidence_nodes_new": 36
+  },
+  "nodes": [
+    {
+      "node_id": "concept:config:1e422f246db07981",
+      "label": "Concept",
+      "term": "jf_currency",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D06"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:295f67bb835c81c9",
+      "label": "Concept",
+      "term": "node_app",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "OT"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:2c0ad7d95410d477",
+      "label": "Concept",
+      "term": "sys_dict_type",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "OT"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:3f1b317cf3d8f4c0",
+      "label": "Concept",
+      "term": "jf_refund_category",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D07"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:735c216b3b26d831",
+      "label": "Concept",
+      "term": "jf_payment_method",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D04"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:77e748fefd47ac8c",
+      "label": "Concept",
+      "term": "jf_system_config",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D16"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:8a49bdd42da54744",
+      "label": "Concept",
+      "term": "jf_fee_category",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D06"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:d7526c5307ff3663",
+      "label": "Concept",
+      "term": "jf_invoice_type",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D05"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:e075ef785639e971",
+      "label": "Concept",
+      "term": "jf_overdue_rules",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D04"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:config:ef4d2a5fc18fff0e",
+      "label": "Concept",
+      "term": "jf_delivery_method",
+      "category": "config",
+      "layer": "structural",
+      "domain": [
+        "D17"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:21ef8294d3617e41",
+      "label": "Concept",
+      "term": "jf_company",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D08"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:6887164aa4abe4e1",
+      "label": "Concept",
+      "term": "jf_warehouse",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D10"
+      ],
+      "status": "[待确认]（未定位可回溯物理表 / 为类别组）"
+    },
+    {
+      "node_id": "concept:master:8001c9c1be96a59b",
+      "label": "Concept",
+      "term": "贸易商",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D08"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:973c3ca661724d03",
+      "label": "Concept",
+      "term": "颜色",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D14"
+      ],
+      "status": "[待确认]（未定位可回溯物理表 / 为类别组）"
+    },
+    {
+      "node_id": "concept:master:97c901019fa2d0be",
+      "label": "Concept",
+      "term": "jf_brand",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D09",
+        "D14"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:ab54dde4af9d733d",
+      "label": "Concept",
+      "term": "商品 SKU",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D09"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:aff0ea810da3a8cf",
+      "label": "Concept",
+      "term": "lcap_department",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "B级"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:c78ff8b7661280e9",
+      "label": "Concept",
+      "term": "产品 SPU",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D09"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:ea2cb1dca6802eb2",
+      "label": "Concept",
+      "term": "country",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "OT"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:master:f84913edb7132af9",
+      "label": "Concept",
+      "term": "客户",
+      "category": "master",
+      "layer": "structural",
+      "domain": [
+        "D08"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:09c172f177eda254",
+      "label": "Concept",
+      "term": "jf_bloc",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D13"
+      ],
+      "status": "[待确认]（未定位可回溯物理表 / 为类别组）"
+    },
+    {
+      "node_id": "concept:transactional:0ba694a978707f08",
+      "label": "Concept",
+      "term": "jf_reservation_stock",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D02"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:128c60a56dd13701",
+      "label": "Concept",
+      "term": "jf_contract_information",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D03"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:19b213994821c602",
+      "label": "Concept",
+      "term": "jf_coupon",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D11"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:2ab39ad9732772e0",
+      "label": "Concept",
+      "term": "jf_quality_standard",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D15"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:4ff38208c9401924",
+      "label": "Concept",
+      "term": "jf_shipping_progress",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D17"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:50ce529c8f0dcfa5",
+      "label": "Concept",
+      "term": "jf_sales_return",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D07"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:6aa017725f43c185",
+      "label": "Concept",
+      "term": "jf_quotation_application",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D02"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:a04bfc3dd847ae57",
+      "label": "Concept",
+      "term": "jf_trader_quota",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D03",
+        "D08"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:ac3ac2fb1ffe3012",
+      "label": "Concept",
+      "term": "jf_sales_order",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D01"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:bb255a582f4b8b44",
+      "label": "Concept",
+      "term": "jf_product_inventory",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D10"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:c955b8fff09539b2",
+      "label": "Concept",
+      "term": "jf_rebate",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D12"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:d5e95d1b520b5fe2",
+      "label": "Concept",
+      "term": "jf_invoice",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D05"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:ed06d799c8ce3b66",
+      "label": "Concept",
+      "term": "jf_fee_bill",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D06"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:f72a07990eb90d41",
+      "label": "Concept",
+      "term": "jf_project_initiation_analysis",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D18"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "concept:transactional:fee2ee3109d32b2f",
+      "label": "Concept",
+      "term": "jf_receivable_claim",
+      "category": "transactional",
+      "layer": "structural",
+      "domain": [
+        "D04"
+      ],
+      "status": "located"
+    },
+    {
+      "node_id": "evsrc:09c172f177eda254",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "09c172f177eda254"
+    },
+    {
+      "node_id": "evsrc:0ba694a978707f08",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "0ba694a978707f08"
+    },
+    {
+      "node_id": "evsrc:128c60a56dd13701",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "128c60a56dd13701"
+    },
+    {
+      "node_id": "evsrc:19b213994821c602",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "19b213994821c602"
+    },
+    {
+      "node_id": "evsrc:1e422f246db07981",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "1e422f246db07981"
+    },
+    {
+      "node_id": "evsrc:21ef8294d3617e41",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "21ef8294d3617e41"
+    },
+    {
+      "node_id": "evsrc:295f67bb835c81c9",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "295f67bb835c81c9"
+    },
+    {
+      "node_id": "evsrc:2ab39ad9732772e0",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "2ab39ad9732772e0"
+    },
+    {
+      "node_id": "evsrc:2c0ad7d95410d477",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "2c0ad7d95410d477"
+    },
+    {
+      "node_id": "evsrc:3f1b317cf3d8f4c0",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "3f1b317cf3d8f4c0"
+    },
+    {
+      "node_id": "evsrc:4ff38208c9401924",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "4ff38208c9401924"
+    },
+    {
+      "node_id": "evsrc:50ce529c8f0dcfa5",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "50ce529c8f0dcfa5"
+    },
+    {
+      "node_id": "evsrc:6887164aa4abe4e1",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "6887164aa4abe4e1"
+    },
+    {
+      "node_id": "evsrc:6aa017725f43c185",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "6aa017725f43c185"
+    },
+    {
+      "node_id": "evsrc:735c216b3b26d831",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "735c216b3b26d831"
+    },
+    {
+      "node_id": "evsrc:77e748fefd47ac8c",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "77e748fefd47ac8c"
+    },
+    {
+      "node_id": "evsrc:8001c9c1be96a59b",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "8001c9c1be96a59b"
+    },
+    {
+      "node_id": "evsrc:8a49bdd42da54744",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "8a49bdd42da54744"
+    },
+    {
+      "node_id": "evsrc:973c3ca661724d03",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "973c3ca661724d03"
+    },
+    {
+      "node_id": "evsrc:97c901019fa2d0be",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "97c901019fa2d0be"
+    },
+    {
+      "node_id": "evsrc:a04bfc3dd847ae57",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "a04bfc3dd847ae57"
+    },
+    {
+      "node_id": "evsrc:ab54dde4af9d733d",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "ab54dde4af9d733d"
+    },
+    {
+      "node_id": "evsrc:ac3ac2fb1ffe3012",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "ac3ac2fb1ffe3012"
+    },
+    {
+      "node_id": "evsrc:aff0ea810da3a8cf",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "aff0ea810da3a8cf"
+    },
+    {
+      "node_id": "evsrc:bb255a582f4b8b44",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "bb255a582f4b8b44"
+    },
+    {
+      "node_id": "evsrc:c78ff8b7661280e9",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "c78ff8b7661280e9"
+    },
+    {
+      "node_id": "evsrc:c955b8fff09539b2",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "c955b8fff09539b2"
+    },
+    {
+      "node_id": "evsrc:d5e95d1b520b5fe2",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "d5e95d1b520b5fe2"
+    },
+    {
+      "node_id": "evsrc:d7526c5307ff3663",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "d7526c5307ff3663"
+    },
+    {
+      "node_id": "evsrc:e075ef785639e971",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "e075ef785639e971"
+    },
+    {
+      "node_id": "evsrc:ea2cb1dca6802eb2",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "ea2cb1dca6802eb2"
+    },
+    {
+      "node_id": "evsrc:ed06d799c8ce3b66",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "ed06d799c8ce3b66"
+    },
+    {
+      "node_id": "evsrc:ef4d2a5fc18fff0e",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.3",
+      "table": null,
+      "column": null,
+      "quote_hash": "ef4d2a5fc18fff0e"
+    },
+    {
+      "node_id": "evsrc:f72a07990eb90d41",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "f72a07990eb90d41"
+    },
+    {
+      "node_id": "evsrc:f84913edb7132af9",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.1",
+      "table": null,
+      "column": null,
+      "quote_hash": "f84913edb7132af9"
+    },
+    {
+      "node_id": "evsrc:fee2ee3109d32b2f",
+      "label": "EvidenceSrc",
+      "file": "er-model/05-跨域核心关系总览.md",
+      "section": "§二.2.2",
+      "table": null,
+      "column": null,
+      "quote_hash": "fee2ee3109d32b2f"
+    }
+  ],
+  "edges": [
+    {
+      "src": "concept:config:1e422f246db07981",
+      "dst": "evsrc:1e422f246db07981",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_currency"
+    },
+    {
+      "src": "concept:config:1e422f246db07981",
+      "dst": "table:jf_currency",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "1e422f246db07981",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "evsrc:295f67bb835c81c9",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "node_app"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "evsrc:295f67bb835c81c9",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "sidebar_node"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "evsrc:295f67bb835c81c9",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "structure_table"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "table:node_app",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "295f67bb835c81c9",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "table:sidebar_node",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "295f67bb835c81c9",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:295f67bb835c81c9",
+      "dst": "table:structure_table",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "295f67bb835c81c9",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:2c0ad7d95410d477",
+      "dst": "evsrc:2c0ad7d95410d477",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "sys_dict_type"
+    },
+    {
+      "src": "concept:config:2c0ad7d95410d477",
+      "dst": "evsrc:2c0ad7d95410d477",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "sys_dict_data"
+    },
+    {
+      "src": "concept:config:2c0ad7d95410d477",
+      "dst": "table:sys_dict_data",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "2c0ad7d95410d477",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:2c0ad7d95410d477",
+      "dst": "table:sys_dict_type",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "2c0ad7d95410d477",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:3f1b317cf3d8f4c0",
+      "dst": "evsrc:3f1b317cf3d8f4c0",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_refund_category"
+    },
+    {
+      "src": "concept:config:3f1b317cf3d8f4c0",
+      "dst": "evsrc:3f1b317cf3d8f4c0",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_refund_type"
+    },
+    {
+      "src": "concept:config:3f1b317cf3d8f4c0",
+      "dst": "table:jf_refund_category",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "3f1b317cf3d8f4c0",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:3f1b317cf3d8f4c0",
+      "dst": "table:jf_refund_type",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "3f1b317cf3d8f4c0",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "evsrc:735c216b3b26d831",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_payment_method"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "evsrc:735c216b3b26d831",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_payment_way"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "evsrc:735c216b3b26d831",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_payment_form"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "table:jf_payment_form",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "735c216b3b26d831",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "table:jf_payment_method",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "735c216b3b26d831",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:735c216b3b26d831",
+      "dst": "table:jf_payment_way",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "735c216b3b26d831",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "evsrc:77e748fefd47ac8c",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_system_config"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "evsrc:77e748fefd47ac8c",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_message"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "evsrc:77e748fefd47ac8c",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_mail"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "evsrc:77e748fefd47ac8c",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_oa_workflow_config"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "table:jf_mail",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "77e748fefd47ac8c",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "table:jf_message",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "77e748fefd47ac8c",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "table:jf_oa_workflow_config",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "77e748fefd47ac8c",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:77e748fefd47ac8c",
+      "dst": "table:jf_system_config",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "77e748fefd47ac8c",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "evsrc:8a49bdd42da54744",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_fee_category"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "evsrc:8a49bdd42da54744",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_fee_item"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "evsrc:8a49bdd42da54744",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_expense_type"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "table:jf_expense_type",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "8a49bdd42da54744",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "table:jf_fee_category",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "8a49bdd42da54744",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:8a49bdd42da54744",
+      "dst": "table:jf_fee_item",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "8a49bdd42da54744",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:d7526c5307ff3663",
+      "dst": "evsrc:d7526c5307ff3663",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_invoice_type"
+    },
+    {
+      "src": "concept:config:d7526c5307ff3663",
+      "dst": "evsrc:d7526c5307ff3663",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_invoice_information"
+    },
+    {
+      "src": "concept:config:d7526c5307ff3663",
+      "dst": "table:jf_invoice_information",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "d7526c5307ff3663",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:d7526c5307ff3663",
+      "dst": "table:jf_invoice_type",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "d7526c5307ff3663",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:e075ef785639e971",
+      "dst": "evsrc:e075ef785639e971",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_overdue_rules"
+    },
+    {
+      "src": "concept:config:e075ef785639e971",
+      "dst": "evsrc:e075ef785639e971",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_control_account_period"
+    },
+    {
+      "src": "concept:config:e075ef785639e971",
+      "dst": "table:jf_control_account_period",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "e075ef785639e971",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:e075ef785639e971",
+      "dst": "table:jf_overdue_rules",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "e075ef785639e971",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "evsrc:ef4d2a5fc18fff0e",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_delivery_method"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "evsrc:ef4d2a5fc18fff0e",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_shipping_mode"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "evsrc:ef4d2a5fc18fff0e",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_logistics_information"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "table:jf_delivery_method",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ef4d2a5fc18fff0e",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "table:jf_logistics_information",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ef4d2a5fc18fff0e",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:config:ef4d2a5fc18fff0e",
+      "dst": "table:jf_shipping_mode",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ef4d2a5fc18fff0e",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:21ef8294d3617e41",
+      "dst": "evsrc:21ef8294d3617e41",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_company"
+    },
+    {
+      "src": "concept:master:21ef8294d3617e41",
+      "dst": "evsrc:21ef8294d3617e41",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_first_party"
+    },
+    {
+      "src": "concept:master:21ef8294d3617e41",
+      "dst": "table:jf_company",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "21ef8294d3617e41",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:21ef8294d3617e41",
+      "dst": "table:jf_first_party",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "21ef8294d3617e41",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:8001c9c1be96a59b",
+      "dst": "evsrc:8001c9c1be96a59b",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_trader"
+    },
+    {
+      "src": "concept:master:8001c9c1be96a59b",
+      "dst": "table:jf_trader",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "8001c9c1be96a59b",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "evsrc:97c901019fa2d0be",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_brand"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "evsrc:97c901019fa2d0be",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_product_category"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "evsrc:97c901019fa2d0be",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_goods_category"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "table:jf_brand",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "97c901019fa2d0be",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "table:jf_goods_category",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "97c901019fa2d0be",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:97c901019fa2d0be",
+      "dst": "table:jf_product_category",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "97c901019fa2d0be",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:ab54dde4af9d733d",
+      "dst": "evsrc:ab54dde4af9d733d",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_goods"
+    },
+    {
+      "src": "concept:master:ab54dde4af9d733d",
+      "dst": "table:jf_goods",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ab54dde4af9d733d",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "evsrc:aff0ea810da3a8cf",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "lcap_department"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "evsrc:aff0ea810da3a8cf",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "lcap_user"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "evsrc:aff0ea810da3a8cf",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "lcap_role"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "table:lcap_department",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "aff0ea810da3a8cf",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "table:lcap_role",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "aff0ea810da3a8cf",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:aff0ea810da3a8cf",
+      "dst": "table:lcap_user",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "aff0ea810da3a8cf",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:c78ff8b7661280e9",
+      "dst": "evsrc:c78ff8b7661280e9",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_product"
+    },
+    {
+      "src": "concept:master:c78ff8b7661280e9",
+      "dst": "table:jf_product",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "c78ff8b7661280e9",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:ea2cb1dca6802eb2",
+      "dst": "evsrc:ea2cb1dca6802eb2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "country"
+    },
+    {
+      "src": "concept:master:ea2cb1dca6802eb2",
+      "dst": "evsrc:ea2cb1dca6802eb2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "sale_type"
+    },
+    {
+      "src": "concept:master:ea2cb1dca6802eb2",
+      "dst": "table:country",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ea2cb1dca6802eb2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:ea2cb1dca6802eb2",
+      "dst": "table:sale_type",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ea2cb1dca6802eb2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:master:f84913edb7132af9",
+      "dst": "evsrc:f84913edb7132af9",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_customer"
+    },
+    {
+      "src": "concept:master:f84913edb7132af9",
+      "dst": "table:jf_customer",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "f84913edb7132af9",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:0ba694a978707f08",
+      "dst": "evsrc:0ba694a978707f08",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_reservation_stock"
+    },
+    {
+      "src": "concept:transactional:0ba694a978707f08",
+      "dst": "table:jf_reservation_stock",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "0ba694a978707f08",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:128c60a56dd13701",
+      "dst": "evsrc:128c60a56dd13701",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_contract_information"
+    },
+    {
+      "src": "concept:transactional:128c60a56dd13701",
+      "dst": "table:jf_contract_information",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "128c60a56dd13701",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:19b213994821c602",
+      "dst": "evsrc:19b213994821c602",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_coupon"
+    },
+    {
+      "src": "concept:transactional:19b213994821c602",
+      "dst": "evsrc:19b213994821c602",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_customer_equity_item"
+    },
+    {
+      "src": "concept:transactional:19b213994821c602",
+      "dst": "table:jf_coupon",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "19b213994821c602",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:19b213994821c602",
+      "dst": "table:jf_customer_equity_item",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "19b213994821c602",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:2ab39ad9732772e0",
+      "dst": "evsrc:2ab39ad9732772e0",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_quality_standard"
+    },
+    {
+      "src": "concept:transactional:2ab39ad9732772e0",
+      "dst": "evsrc:2ab39ad9732772e0",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_quality_compensation"
+    },
+    {
+      "src": "concept:transactional:2ab39ad9732772e0",
+      "dst": "table:jf_quality_compensation",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "2ab39ad9732772e0",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:2ab39ad9732772e0",
+      "dst": "table:jf_quality_standard",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "2ab39ad9732772e0",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:4ff38208c9401924",
+      "dst": "evsrc:4ff38208c9401924",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_shipping_progress"
+    },
+    {
+      "src": "concept:transactional:4ff38208c9401924",
+      "dst": "evsrc:4ff38208c9401924",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_delivery_address"
+    },
+    {
+      "src": "concept:transactional:4ff38208c9401924",
+      "dst": "table:jf_delivery_address",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "4ff38208c9401924",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:4ff38208c9401924",
+      "dst": "table:jf_shipping_progress",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "4ff38208c9401924",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:50ce529c8f0dcfa5",
+      "dst": "evsrc:50ce529c8f0dcfa5",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_sales_return"
+    },
+    {
+      "src": "concept:transactional:50ce529c8f0dcfa5",
+      "dst": "evsrc:50ce529c8f0dcfa5",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_return_repair_order"
+    },
+    {
+      "src": "concept:transactional:50ce529c8f0dcfa5",
+      "dst": "table:jf_return_repair_order",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "50ce529c8f0dcfa5",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:50ce529c8f0dcfa5",
+      "dst": "table:jf_sales_return",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "50ce529c8f0dcfa5",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:6aa017725f43c185",
+      "dst": "evsrc:6aa017725f43c185",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_quotation_application"
+    },
+    {
+      "src": "concept:transactional:6aa017725f43c185",
+      "dst": "table:jf_quotation_application",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "6aa017725f43c185",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:a04bfc3dd847ae57",
+      "dst": "evsrc:a04bfc3dd847ae57",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_trader_quota"
+    },
+    {
+      "src": "concept:transactional:a04bfc3dd847ae57",
+      "dst": "table:jf_trader_quota",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "a04bfc3dd847ae57",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:ac3ac2fb1ffe3012",
+      "dst": "evsrc:ac3ac2fb1ffe3012",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_sales_order"
+    },
+    {
+      "src": "concept:transactional:ac3ac2fb1ffe3012",
+      "dst": "evsrc:ac3ac2fb1ffe3012",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_sales_order_detail"
+    },
+    {
+      "src": "concept:transactional:ac3ac2fb1ffe3012",
+      "dst": "table:jf_sales_order",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ac3ac2fb1ffe3012",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:ac3ac2fb1ffe3012",
+      "dst": "table:jf_sales_order_detail",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ac3ac2fb1ffe3012",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:bb255a582f4b8b44",
+      "dst": "evsrc:bb255a582f4b8b44",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_product_inventory"
+    },
+    {
+      "src": "concept:transactional:bb255a582f4b8b44",
+      "dst": "evsrc:bb255a582f4b8b44",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_business_inventory"
+    },
+    {
+      "src": "concept:transactional:bb255a582f4b8b44",
+      "dst": "table:jf_business_inventory",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "bb255a582f4b8b44",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:bb255a582f4b8b44",
+      "dst": "table:jf_product_inventory",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "bb255a582f4b8b44",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:c955b8fff09539b2",
+      "dst": "evsrc:c955b8fff09539b2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_rebate"
+    },
+    {
+      "src": "concept:transactional:c955b8fff09539b2",
+      "dst": "evsrc:c955b8fff09539b2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_statement"
+    },
+    {
+      "src": "concept:transactional:c955b8fff09539b2",
+      "dst": "table:jf_rebate",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "c955b8fff09539b2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:c955b8fff09539b2",
+      "dst": "table:jf_statement",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "c955b8fff09539b2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:d5e95d1b520b5fe2",
+      "dst": "evsrc:d5e95d1b520b5fe2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_invoice"
+    },
+    {
+      "src": "concept:transactional:d5e95d1b520b5fe2",
+      "dst": "evsrc:d5e95d1b520b5fe2",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_tax_bill"
+    },
+    {
+      "src": "concept:transactional:d5e95d1b520b5fe2",
+      "dst": "table:jf_invoice",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "d5e95d1b520b5fe2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:d5e95d1b520b5fe2",
+      "dst": "table:jf_tax_bill",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "d5e95d1b520b5fe2",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:ed06d799c8ce3b66",
+      "dst": "evsrc:ed06d799c8ce3b66",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_fee_bill"
+    },
+    {
+      "src": "concept:transactional:ed06d799c8ce3b66",
+      "dst": "evsrc:ed06d799c8ce3b66",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_expense_subject"
+    },
+    {
+      "src": "concept:transactional:ed06d799c8ce3b66",
+      "dst": "table:jf_expense_subject",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ed06d799c8ce3b66",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:ed06d799c8ce3b66",
+      "dst": "table:jf_fee_bill",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "ed06d799c8ce3b66",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:f72a07990eb90d41",
+      "dst": "evsrc:f72a07990eb90d41",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_project_initiation_analysis"
+    },
+    {
+      "src": "concept:transactional:f72a07990eb90d41",
+      "dst": "evsrc:f72a07990eb90d41",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_proofing_number"
+    },
+    {
+      "src": "concept:transactional:f72a07990eb90d41",
+      "dst": "table:jf_project_initiation_analysis",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "f72a07990eb90d41",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:f72a07990eb90d41",
+      "dst": "table:jf_proofing_number",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "f72a07990eb90d41",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "evsrc:fee2ee3109d32b2f",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_receivable_claim"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "evsrc:fee2ee3109d32b2f",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_collection_bill"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "evsrc:fee2ee3109d32b2f",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_income_bill"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "evsrc:fee2ee3109d32b2f",
+      "type": "SUPPORTED_BY",
+      "rel_kind": "REALIZED_BY",
+      "dst_table": "jf_receivable_write_off"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "table:jf_collection_bill",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "fee2ee3109d32b2f",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "table:jf_income_bill",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "fee2ee3109d32b2f",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "table:jf_receivable_claim",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "fee2ee3109d32b2f",
+      "binding": "doc_named_exact_match"
+    },
+    {
+      "src": "concept:transactional:fee2ee3109d32b2f",
+      "dst": "table:jf_receivable_write_off",
+      "type": "REALIZED_BY",
+      "is_inferred": true,
+      "evidence_level": "comment_explicit",
+      "source_file": "er-model/05-跨域核心关系总览.md",
+      "quote_hash": "fee2ee3109d32b2f",
+      "binding": "doc_named_exact_match"
+    }
+  ]
+}

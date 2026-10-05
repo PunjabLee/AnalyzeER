@@ -31,6 +31,7 @@ from networkx.algorithms.community import greedy_modularity_communities
 from ..ingest.config import CONFIDENCE_DEFAULT_MIN, DATA_META_DIR
 from ..lineage import load_graph_with_lineage
 from ..lineage.extractor import REFERENCES_TYPE
+from . import source_fingerprint
 
 RELATES_TO_TYPE = "RELATES_TO"
 _COMMUNITY_TYPES = (REFERENCES_TYPE, RELATES_TO_TYPE)
@@ -296,6 +297,7 @@ def run(resolution: float = 1.0, write: bool = True) -> dict:
         "community_role": "analysis_view_only",
     }
 
+    source_fingerprint.embed(result, write=write)
     if write:
         _export(kept, result)
     return {"graph": G, "kept": kept, "result": result, "domain_map": domain_map,

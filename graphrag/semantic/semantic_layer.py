@@ -6,12 +6,15 @@
   2. 核心实体三分类（master/transactional/config）← `05 §二` 权威清单，逐条挂来源。
   3. 字段"含义" ← DDL **COMMENT 原文**（`test_erp.sql` 结构事实为最终仲裁；M1 Column.semantic）。
   4. D14 字典域 + 全局 KV 字典 = 枚举/码表语义（值→义，来源 DDL COMMENT + `03/D14`）。
-  5. `Concept` 节点 + `REALIZED_BY` 边：把业务概念绑定到物理表（仅 `05 §二` 点名且可定位者）。
+  5. `Concept` 节点 + `REALIZED_BY` 边：把业务概念绑定到物理表（仅 `05 §二` 点名且可定位者）；
+     **交付承诺实落盘**：`run(write=True)` 导出 `semantic_concept_graph.json`（P2-5，不再口惠）。
 - ❌ **指标语义层**（KPI/计算口径/正式业务术语表）：`er-model`/DDL 中不存在，需外部 BI/需求源
   → **超本期范围、不实现、显式标注**（见 `OUT_OF_SCOPE`）。
 
 诚实纪律：语义元素**100% 挂来源**；无法定位者标 `[待确认]`，**绝不臆造字段含义/关系**。
-只读消费 M1 快照 `l0_graph.json`（+ M3 `community_*`），不回写上游。
+只读消费 M1 快照 `l0_graph.json`（+ `er-model/05` 直接读取），不回写上游。
+P2-5 纠偏：本模块 build()/run() **不读** M3 `community_*`——M3 产物的只读消费/承接发生在
+同包 `m3_p2_handoff.py`（含 P1-2 `input_fingerprint` 消费校验）与 `graphrag/nl/`。
 """
 
 from __future__ import annotations
@@ -27,7 +30,6 @@ from ..ingest.config import (
     DOMAIN_DECLARED,
     FILE_05,
     L0_GRAPH_JSON,
-    SQL_FILE,
 )
 from ..store.graph import PropertyGraph
 from ..store.loader import load_graph_json
@@ -35,6 +37,8 @@ from ..store.loader import load_graph_json
 # out/ 被 .gitignore 忽略；权威口径以 data/meta 可提交镜像为准（承 M1/M2/M3）。
 OUT_DIR = DATA_META_DIR.parents[1] / "out" / "semantic"
 SEMANTIC_ARTIFACT = "semantic_layer.json"
+# P2-5：Concept/REALIZED_BY 叠加层落盘（交付承诺 → 实际产物）
+CONCEPT_GRAPH_ARTIFACT = "semantic_concept_graph.json"
 
 # ------------------------------------------------------------------ 语义层范围声明
 SEMANTIC_LAYER_SCOPE = "structural"
@@ -68,8 +72,15 @@ _CATEGORY_BY_SECTION = {"2.1": "master", "2.2": "transactional", "2.3": "config"
 _CATEGORY_CN = {"master": "主数据/基础实体", "transactional": "交易/事务实体",
                 "config": "配置/字典实体"}
 
-# DDL COMMENT 内联枚举（值→义）正则：单数字 + 可选分隔(:：=-) + ≥1 CJK 标签
-_ENUM_PAIR_RE = re.compile(r"([0-9])\s*[:：=\-]?\s*([\u4e00-\u9fff]{1,10})")
+# DDL COMMENT 内联枚举（值→义）正则 —— **P1-1 修复**（终轮 CodeReview）：
+#   ① `(?<!\d)` 前断言：不从多位数中间截码（旧版 "10:备坯" 被截成 "0:备坯" 并与其他 "0" 碰撞）；
+#   ② `\d{1,2}`：1~2 位**整数码**（0001 之类的长码不机读——宁缺勿错）；
+#   ③ **必须显式分隔符** `[:：=\-]`：杜绝 "16日"/"2024-01-01" 这类日期数字被臆造成枚举，
+#      以及 "0正常 1停用"（无分隔）的侥幸命中——后者仅入 declined 审计，不落映射。
+_ENUM_PAIR_RE = re.compile(r"(?<!\d)(\d{1,2})\s*[:：=\-]\s*([\u4e00-\u9fff]{1,12})")
+# **仅审计**（P1-1 影响面取证，不落任何映射）：旧版单位数+可选分隔正则，用于登记
+# "曾以错/险映射入选、现已降级"的受影响列清单（declined），保证修复前后计数可如实对照。
+_ENUM_PAIR_LEGACY_RE = re.compile(r"([0-9])\s*[:：=\-]?\s*([\u4e00-\u9fff]{1,10})")
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -267,10 +278,13 @@ class SemanticLayer:
 
     # ------------------------------------------------------ 4. 枚举 / 码表语义
     def enum_semantics(self) -> dict:
+        accepted, review, declined = self._inline_enums()
         return {
             "code_tables": self._code_tables(),
             "kv_dictionaries": self._kv_dictionaries(),
-            "inline_enums_from_comment": self._inline_enums(),
+            "inline_enums_from_comment": accepted,
+            "inline_enums_needs_review": review,     # 值键冲突 → 不落映射（P1-1）
+            "inline_enums_declined": declined,       # P1-1 影响的旧版入选列（审计）
         }
 
     def _code_tables(self) -> list[dict]:
@@ -310,9 +324,19 @@ class SemanticLayer:
                 })
         return out
 
-    def _inline_enums(self) -> list[dict]:
-        """DDL COMMENT 原文直接写明的值→义枚举（可从 test_erp.sql 逐字回溯）。"""
-        out = []
+    def _inline_enums(self) -> tuple[list[dict], list[dict], list[dict]]:
+        """DDL COMMENT 内联枚举（值→义）——**P1-1 修复口径**。
+
+        返回 `(accepted, needs_review, declined)` 三分：
+        - **accepted**：≥2 对显式分隔值义、且**值键唯一**（同一码值只允许一个标签；
+          同值同义重复出现按首次出现去重）——可安全机读落库；逐条附 raw_comment
+          供 test_erp.sql 原文逐字回溯。
+        - **needs_review**：同值键出现多标签（真冲突）→ **不落映射**，标 `[待确认]`，
+          绝不静默产出错映射（承评审"值键唯一断言"要求）。
+        - **declined**：旧版正则曾入选、但按 P1-1 口径不再可机读者（无显式分隔符 /
+          多位数截断风险 / 可证对数不足）→ 仅审计留痕，含义仍在 `field_meanings` 原文可查。
+        """
+        accepted, review, declined = [], [], []
         for t in sorted(self.a_tables):
             for cname in sorted(self.columns.get(t, {})):
                 sem = (self.columns[t][cname].get("semantic") or "").strip()
@@ -321,31 +345,72 @@ class SemanticLayer:
                 pairs = _ENUM_PAIR_RE.findall(sem)
                 uniq_vals = {v for v, _ in pairs}
                 if len(pairs) >= 2 and len(uniq_vals) >= 2:
-                    out.append({
+                    labels_by_val: dict[str, set[str]] = defaultdict(set)
+                    for v, lab in pairs:
+                        labels_by_val[v].add(lab)
+                    conflicts = {v: sorted(ls) for v, ls in labels_by_val.items()
+                                 if len(ls) > 1}
+                    # 值键唯一断言的落库形态：按首次出现去重（同值同义不重复计）
+                    seen_v: set[str] = set()
+                    dvals = []
+                    for v, lab in pairs:
+                        if v in seen_v:
+                            continue
+                        seen_v.add(v)
+                        dvals.append({"value": v, "label": lab})
+                    rec = {
                         "table": t, "column": cname, "domain": self.table_domain[t],
                         "raw_comment": sem,
-                        "values": [{"value": v, "label": lab} for v, lab in pairs],
+                        "values": dvals,
                         "source": _src("test_erp.sql", None, f"{t}.{cname}|{sem}"),
-                    })
-        return out
+                    }
+                    if conflicts:                      # 值键冲突 → 降级不入映射（P1-1）
+                        rec["conflicts"] = conflicts
+                        rec["status"] = "[待确认]（值键冲突：同码多义，不落映射）"
+                        review.append(rec)
+                    else:
+                        accepted.append(rec)
+                else:
+                    legacy = _ENUM_PAIR_LEGACY_RE.findall(sem)
+                    if len(legacy) >= 2 and len({v for v, _ in legacy}) >= 2:
+                        declined.append({
+                            "table": t, "column": cname, "domain": self.table_domain[t],
+                            "raw_comment": sem,
+                            "legacy_sample": [{"value": v, "label": lab}
+                                              for v, lab in legacy],
+                            "reason": ("P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；"
+                                       "此列旧版系无分隔采样或多位码截断（如 10→0），"
+                                       "不再产出机读映射"),
+                            "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+                            "source": _src("test_erp.sql", None, f"{t}.{cname}|{sem}"),
+                        })
+        return accepted, review, declined
 
     # ------------------------------------------------------ Concept 图（含 REALIZED_BY）
     def build_concept_graph(self) -> tuple[PropertyGraph, dict]:
-        """在 M1 图副本上叠加 Concept 节点 + REALIZED_BY 边（仅绑可定位者；可回溯）。"""
+        """在 M1 图副本上叠加 Concept 节点 + REALIZED_BY 边（仅绑可定位者；可回溯）。
+
+        P2-5：该结构属交付承诺——`run(write=True)` 经 `concept_subgraph_payload()`
+        **实落盘** `semantic_concept_graph.json`，不再只是内存态"承诺"。
+        """
         entities = self.entity_classification()
-        nodes_added = 0
-        edges_added = 0
+        nodes_added = edges_added = sup_added = ev_added = 0
+        concept_ids: list[str] = []
+        evidence_ids: list[str] = []
         for e in entities:
             self.g.add_node(e["concept_id"], "Concept",
                             term=e["term"], category=e["category"],
                             layer=SEMANTIC_LAYER_SCOPE,
                             domain=e["declared_domains"], status=e["status"])
             nodes_added += 1
+            concept_ids.append(e["concept_id"])
             ev_id = f"evsrc:{e['source']['quote_hash']}"
             if not self.g.has_node(ev_id):
                 self.g.add_node(ev_id, "EvidenceSrc", file=e["source"]["file"],
                                 section=e["source"]["section"], table=None, column=None,
                                 quote_hash=e["source"]["quote_hash"])
+                ev_added += 1
+            evidence_ids.append(ev_id)
             for r in e["binding_detail"]:
                 if r["binding"] == "pending":
                     continue
@@ -357,7 +422,10 @@ class SemanticLayer:
                 self.g.add_edge(e["concept_id"], ev_id, "SUPPORTED_BY",
                                 rel_kind="REALIZED_BY", dst_table=r["table"])
                 edges_added += 1
-        return self.g, {"concepts": nodes_added, "realized_by_edges": edges_added}
+                sup_added += 1
+        return self.g, {"concepts": nodes_added, "realized_by_edges": edges_added,
+                        "supported_by_edges": sup_added, "evidence_nodes_new": ev_added,
+                        "concept_ids": concept_ids, "evidence_ids": evidence_ids}
 
     # ------------------------------------------------------ 汇总
     def build(self) -> dict:
@@ -375,8 +443,21 @@ class SemanticLayer:
             "generator": "graphrag/semantic/semantic_layer.py",
             "semantic_layer_scope": SEMANTIC_LAYER_SCOPE,
             "scope_statement": SCOPE_STATEMENT,
-            "input_sources": ["er-model/*", "test_erp.sql", "graphrag/data/l0_graph.json",
-                              "graphrag/data/meta/community_*"],
+            # P2-5 纠虚报：只列本模块 build()/run() **实际读取**的输入。
+            "input_sources": [
+                "graphrag/data/l0_graph.json（M1 快照：Table/Column/Domain/Issue；"
+                "Column.semantic=DDL COMMENT 原文，最终仲裁者 test_erp.sql）",
+                "er-model/05-跨域核心关系总览.md §二（实体三分类权威清单，直接读取）",
+                "graphrag/ingest/config.py 冻结常量（00 §四 每域声明表数，M0 口径）",
+            ],
+            "input_sources_note": (
+                "P2-5 纠偏：旧版误列 `community_*` 为输入。本模块不读 M3 产物；"
+                "M3 `community_*` 的只读消费发生在同包 `m3_p2_handoff.py`"
+                "（含 P1-2 `input_fingerprint` 消费校验）与 `graphrag/nl/`。"),
+            "upstream_fingerprint": (
+                "P1-2（消费侧接口预留）：读 community_*/全局结果处接住 `input_fingerprint`，"
+                "不一致 fail-fast；生产者嵌入由 M3/eval 侧负责"
+                "（graphrag/semantic/fingerprint.py，本模块不产出指纹）。"),
             "out_of_scope": OUT_OF_SCOPE,
             "domains": self.domain_partitions(),
             "entity_classification": {
@@ -391,32 +472,74 @@ class SemanticLayer:
                 "code_table_count": len(enums["code_tables"]),
                 "kv_dict_count": len(enums["kv_dictionaries"]),
                 "inline_enum_count": len(enums["inline_enums_from_comment"]),
+                "inline_enum_needs_review_count": len(enums["inline_enums_needs_review"]),
+                "inline_enum_declined_count": len(enums["inline_enums_declined"]),
+                "p1_1_note": ("P1-1 修复：旧口径 490（单位数+可选分隔）→ 新口径 = "
+                              "accepted（显式分隔 + 1~2 位整码 + 值键唯一）"
+                              " + needs_review（同码多义，不落映射）"
+                              " + declined（旧版曾入选、现降级的受影响列审计）。"),
                 "detail": enums,
             },
             "concept_realized_by": {
                 "note": "Concept 节点 + REALIZED_BY 边（结构语义，仅 05 点名且可定位者；"
-                        "无法定位者 status=[待确认]，不臆造绑定）",
+                        "无法定位者 status=[待确认]，不臆造绑定）。"
+                        "P2-5：run(write=True) **实落盘** semantic_concept_graph.json。",
+                "materialization": "graphrag/data/meta/semantic_concept_graph.json",
                 "concepts": entities,
             },
             "honest_boundaries": [
                 "字段含义仅取 DDL COMMENT 原文；无 COMMENT 者标 [待确认]，不臆造。",
-                "实体三分类的 REALIZED_BY 仅绑 `05` 点名且命中物理 Table 节点者（A 级可遍历 / B 级影子登记 tier+traversable）；无同名表者 [待确认]。",
+                "实体三分类的 REALIZED_BY 仅绑 `05` 点名且命中物理 Table 节点者（A 级可遍历 / B 级影子登记 tier+traversable）；无同名表者 [待确认]；叠加层经 run(write=True) 落盘 semantic_concept_graph.json。",
                 "码表(D14)枚举值域=表内数据行，DDL/文档不硬编码 → 不落具体常量值（不臆造）。",
-                "内联枚举逐字取自 COMMENT，附 raw_comment 供逐条回溯。",
+                "内联枚举（P1-1）：显式分隔符 + 1~2 位整数码 + 值键唯一方可落库；同码多义→needs_review 不落映射；无分隔写法→declined 仅审计。逐条附 raw_comment 回溯。",
                 "指标/KPI/术语表超范围，未实现（见 out_of_scope）。",
             ],
         }
 
 
+def concept_subgraph_payload(layer: "SemanticLayer", stat: dict) -> dict:
+    """导出 Concept 叠加层子图（P2-5：交付承诺 → 实际落盘产物）。
+
+    仅含本次叠加的 Concept/EvidenceSrc 节点与 REALIZED_BY/SUPPORTED_BY 边
+    （不重复导出 M1 全图；边端点 `table:*` 可在 `l0_graph.json` 解析）。
+    """
+    g = layer.g
+    cids = list(dict.fromkeys(stat["concept_ids"]))
+    eids = [i for i in dict.fromkeys(stat["evidence_ids"]) if g.has_node(i)]
+    nodes = [g.nodes[i] for i in sorted(set(cids) | set(eids))]
+    cid_set = set(cids)
+    edges = [e for e in g.edges
+             if e["src"] in cid_set and e["type"] in ("REALIZED_BY", "SUPPORTED_BY")]
+    edges.sort(key=lambda e: (e["src"], e["dst"], e["type"]))
+    return {
+        "milestone": "M4",
+        "artifact": CONCEPT_GRAPH_ARTIFACT,
+        "generator": "graphrag/semantic/semantic_layer.py::build_concept_graph",
+        "layer": SEMANTIC_LAYER_SCOPE,
+        "note": ("Concept/EvidenceSrc 节点 + REALIZED_BY/SUPPORTED_BY 边（结构语义叠加层）。"
+                 "仅 05 点名且命中实物表者建 REALIZED_BY；无同名表者 Concept.status=[待确认]。"),
+        "counts": {k: v for k, v in stat.items() if not k.endswith("_ids")},
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
 def run(write: bool = True) -> dict:
     layer = SemanticLayer()
     result = layer.build()
+    _, stat = layer.build_concept_graph()       # 叠加层构建（供落盘/计数）
+    result["concept_realized_by"]["counts"] = {k: v for k, v in stat.items()
+                                               if not k.endswith("_ids")}
     if write:
         DATA_META_DIR.mkdir(parents=True, exist_ok=True)
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         payload = json.dumps(result, ensure_ascii=False, indent=2)
         (DATA_META_DIR / SEMANTIC_ARTIFACT).write_text(payload, encoding="utf-8")
         (OUT_DIR / SEMANTIC_ARTIFACT).write_text(payload, encoding="utf-8")
+        cg_text = json.dumps(concept_subgraph_payload(layer, stat),
+                             ensure_ascii=False, indent=2)
+        (DATA_META_DIR / CONCEPT_GRAPH_ARTIFACT).write_text(cg_text, encoding="utf-8")
+        (OUT_DIR / CONCEPT_GRAPH_ARTIFACT).write_text(cg_text, encoding="utf-8")
     return result
 
 
@@ -428,5 +551,7 @@ if __name__ == "__main__":
         "entity_by_cat": r["entity_classification"]["counts_by_category"],
         "field_coverage": r["field_meaning_coverage"],
         "enum": {k: v for k, v in r["enum_semantics"].items() if k != "detail"},
+        "concept_graph_counts": r["concept_realized_by"]["counts"],
+        "concept_graph_artifact": str(DATA_META_DIR / CONCEPT_GRAPH_ARTIFACT),
         "out_of_scope": len(r["out_of_scope"]),
     }, ensure_ascii=False, indent=2))

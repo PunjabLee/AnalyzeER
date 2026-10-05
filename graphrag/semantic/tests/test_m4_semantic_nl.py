@@ -1,17 +1,25 @@
 """M4 · 结构语义层 + 规则式 NL 编排前端 + M3 P2 承接 —— 契约/诚实性测试。
 
-锁定要点（任务 §5 + 过门双门）：
+锁定要点（任务 §5 + 过门双门 + 终轮 CodeReview P1/P2）：
 1. **语义元素 100% 可定位来源**：域分区 / 实体三分类 / 字段含义 / 枚举码表逐条挂来源；
    不可定位者一律 `[待确认]`（绝不臆造字段含义 / 实体绑定）。
-2. **不虚构**：located 概念的 realized_by 必为图内真实 Table 节点；REALIZED_BY 边指向实物表。
+2. **不虚构**：located 概念的 realized_by 必为图内真实 Table 节点；REALIZED_BY 边指向实物表，
+   且 `run(write=True)` **实落盘** semantic_concept_graph.json（P2-5 承诺即产出）。
 3. **指标语义层确未出现**：语义层 scope=structural，指标/KPI/术语表在 `out_of_scope` 显式声明。
 4. **NL 只调 L1/L2**：意图答案仅来自 `search/l1` 与 `community`；不引血缘 M2 遍历 / LLM。
 5. **NL 不绕置信 / 存疑门**：默认 conf≥0.45、show_uncertain=False、max_hops≤3（超限钳制）。
 6. **NL 不生成无出处关系**：关系/遍历/耦合每条都有图内可回溯边（quote_hash / 真实邻接）。
-7. **拒绝臆造兜底**：未定位实体 / 无路径 → refused，不编答案。
+7. **拒绝臆造兜底**：未定位实体 / 无路径 → refused，不编答案；**refused ⇒ sources==[]**
+   （P2-3，u6-03 幻影域不再泄漏 Domain 出处）。
 8. **LLM stub 默认禁用**：`ENABLED=False`，调用即抛 NotImplementedError。
 9. **M3 P2 承接**：75 孤立 A 表名单落盘且覆盖等式闭合；9 混合簇逐条标 `对照观察(非发现物)`；
    golden 入口交接声明 6 意图 + LLM 禁用。
+10. **P1-1 内联枚举**：显式分隔符 + 1~2 位整码 + 值键唯一；多位码不截断、日期数字不入选、
+    同码多义降级 needs_review、旧版入选现降级者入 declined 审计。
+11. **P2-4 方向词表**：上游（依赖/来自/属于→in）、下游（谁依赖/影响→out）；方向不可判 →
+    UC4/UC5 回退 both + 反问提示（不默认 out）；`answer(intent=)` 非法 id → ValueError。
+12. **P2-6 FTS 打开**：文件不存在/索引未建 → None；**索引损坏 → 抛出**（区分两种语义）。
+13. **P1-2 指纹消费**：接住上游 `input_fingerprint`；与期望不一致 fail-fast；缺失放行留痕。
 """
 
 from __future__ import annotations
@@ -19,6 +27,7 @@ from __future__ import annotations
 import copy
 import inspect
 import json
+import sqlite3
 
 import pytest
 
@@ -26,10 +35,18 @@ from graphrag.ingest.config import (
     CONFIDENCE_DEFAULT_MIN, MAX_HOPS, L0_GRAPH_JSON, DOMAIN_DECLARED, DATA_META_DIR,
 )
 from graphrag.store.loader import load_graph_json
+from graphrag.store.graph import PropertyGraph
 from graphrag.semantic import semantic_layer as sl
 from graphrag.semantic import m3_p2_handoff as p2
+from graphrag.semantic import fingerprint as fpmod
 from graphrag.nl import nl_router as nlr
 from graphrag.nl import llm_synthesis
+
+
+@pytest.fixture(autouse=True)
+def _no_fingerprint_env(monkeypatch):
+    """指纹期望基准环境变量不得影响测试（由编排/门禁注入才生效）。"""
+    monkeypatch.delenv(fpmod.ENV_EXPECTED, raising=False)
 
 
 # ---------------------------------------------------------------- fixtures
@@ -87,6 +104,19 @@ def test_scope_is_structural_and_declared(built):
     assert built["semantic_layer_scope"] == "structural"
     assert "不含指标语义层" in built["scope_statement"]
     assert built["out_of_scope"] == sl.OUT_OF_SCOPE
+
+
+def test_p2_5_input_sources_honest_no_community_overclaim(built):
+    """P2-5：input_sources 不得虚报 community_*（本模块实际只读 l0_graph + 05）。"""
+    srcs = " ".join(built["input_sources"])
+    assert "community_" not in srcs
+    assert "l0_graph.json" in srcs and "05-跨域核心关系总览.md" in srcs
+    assert "P2-5" in built["input_sources_note"]
+    import graphrag.semantic.semantic_layer as slmod
+    assert not hasattr(slmod, "SQL_FILE")                   # 未用 import 已移除
+    src = inspect.getsource(slmod)
+    for forbidden in ("SQL_FILE", "community_result", "community_edges"):
+        assert forbidden not in src, forbidden              # 语义层本体不碰 M3 产物文件
 
 
 def test_every_domain_partition_has_source(built):
@@ -160,6 +190,91 @@ def test_enum_semantics_all_sourced(layer):
     for ie in en["inline_enums_from_comment"]:
         assert ie["source"]["file"] == "test_erp.sql"
         assert ie["raw_comment"] and len(ie["values"]) >= 2     # 逐字可回溯 + ≥2 值义对
+        vals = [p["value"] for p in ie["values"]]
+        # P1-1：落库值键**唯一**（同码多义者不在 accepted，见 needs_review）
+        assert len(vals) == len(set(vals)), (ie["table"], ie["column"])
+    for rv in en["inline_enums_needs_review"]:
+        assert rv["conflicts"] and "待确认" in rv["status"]      # 冲突 → 不落映射只留痕
+    for dl in en["inline_enums_declined"]:
+        assert dl["legacy_sample"] and "P1-1" in dl["reason"]
+
+
+# ================================================================ P1-1 内联枚举修复
+def test_p1_1_regex_multidigit_not_truncated():
+    """多位码完整保留（旧版 "10:备坯" 被截成 "0:备坯" 致错映射）。"""
+    assert sl._ENUM_PAIR_RE.findall("10:备坯 11:备纱 16:付运") == [
+        ("10", "备坯"), ("11", "备纱"), ("16", "付运")]
+
+
+def test_p1_1_regex_date_digits_not_selected():
+    """日期数字/无分隔写法不得入选（旧版把 "16日"/纯数字臆造成枚举）。"""
+    assert sl._ENUM_PAIR_RE.findall("生效日期 2024-01-01") == []
+    assert sl._ENUM_PAIR_RE.findall("第16日结算") == []
+    assert sl._ENUM_PAIR_RE.findall("状态(0正常 1停用)") == []   # 无显式分隔 → 不机读
+
+
+def _synthetic_layer():
+    g = PropertyGraph()
+    g.add_node("domain:D01", "Domain", domain_id="D01", tier="A", table_count=1)
+    g.add_node("table:jf_enumtest", "Table", name="jf_enumtest", tier="A", domain="D01",
+               column_count=4)
+    specs = {
+        "multi": "10:备坯，11:备纱，16:付运",                    # 多位码 → accepted 不截断
+        "dup": "1:草稿，2:已取消，1:拣货中",                     # 同码多义 → needs_review
+        "nosep": "状态(0正常 1停用)",                            # 无分隔 → declined 审计
+        "datey": "生效日期 2024-01-01 至 2024-12-31 为界",        # 日期 → 不落任何映射
+    }
+    for c, txt in specs.items():
+        g.add_node(f"column:jf_enumtest.{c}", "Column", name=c, table_id="jf_enumtest",
+                   semantic=txt, data_type="tinyint", key_role=None)
+    return sl.SemanticLayer(graph=g)
+
+
+def test_p1_1_synthetic_three_way_split():
+    acc, rev, dec = _synthetic_layer()._inline_enums()
+    by_col = lambda rows: {r["column"]: r for r in rows}
+    a, r, d = by_col(acc), by_col(rev), by_col(dec)
+    assert set(a) == {"multi"}
+    assert [p["value"] for p in a["multi"]["values"]] == ["10", "11", "16"]  # 未截断
+    assert set(r) == {"dup"}
+    assert set(r["dup"]["conflicts"]["1"]) == {"草稿", "拣货中"}              # 冲突留痕
+    assert set(d) == {"nosep"}                                                # 旧版入选→降级审计
+    assert "1" not in a and "2" not in a                                     # 冲突列未混入映射
+    assert "datey" not in a and "datey" not in r and "datey" not in d         # 日期彻底不入选
+
+
+def test_p1_1_real_status_multidigit_fixed(layer):
+    """点名缺陷回归：jf_sales_order.status 旧版 "1"→草稿/拣货中 碰撞，新版 10–16 完整。"""
+    acc, rev, dec = layer._inline_enums()
+    status = next((x for x in acc
+                   if x["table"] == "jf_sales_order" and x["column"] == "status"), None)
+    assert status is not None and not any(
+        x["table"] == "jf_sales_order" and x["column"] == "status" for x in rev + dec)
+    vmap = {p["value"]: p["label"] for p in status["values"]}
+    assert vmap["1"] == "草稿"                    # "1" 不再与 "11"（拣货中）碰撞
+    assert vmap["10"] == "已派单" and vmap["11"] == "拣货中"
+    assert vmap["16"] == "付运"
+    assert len({p["value"] for p in status["values"]}) == len(status["values"])
+
+
+def test_p1_1_prepare_type_wrong_mapping_removed(layer):
+    """点名缺陷回归：prepare_type "10备坯" 旧版截成 "0:备坯"（错映射）→ 已彻底移出映射。"""
+    acc, rev, dec = layer._inline_enums()
+    for t in ("jf_reservation_stock", "jf_reservation_stock_import"):
+        assert not any(x["table"] == t and x["column"] == "prepare_type" for x in acc + rev)
+        assert any(x["table"] == t and x["column"] == "prepare_type" for x in dec)
+    # 0001 四位错误码同样不再被截成 "1"
+    assert any(x["table"] == "jf_sales_order_detail" and x["column"] == "error_code"
+               for x in dec)
+
+
+def test_p1_1_counts_490_to_new(built):
+    """如实报告：旧 490 → accepted + needs_review + declined（旧入选者去向可全量对账）。"""
+    es = built["enum_semantics"]
+    assert es["inline_enum_count"] == 477
+    assert es["inline_enum_needs_review_count"] == 0      # 新口径下真冲突为 0（截断根因已修）
+    assert es["inline_enum_declined_count"] == 13         # 受影响列清单（审计留痕）
+    assert es["inline_enum_count"] + es["inline_enum_declined_count"] == 490
 
 
 # ================================================================ 2 REALIZED_BY 图不虚构
@@ -176,6 +291,27 @@ def test_concept_graph_realized_by_points_to_real_tables(layer, fresh_graph):
             assert e["is_inferred"] is True                     # 承全库推断、非物理约束
             seen += 1
     assert seen == stat["realized_by_edges"]
+
+
+def test_p2_5_concept_graph_actually_materialized(tmp_path, monkeypatch):
+    """P2-5：交付承诺必须实落盘——run(write=True) 写出 semantic_concept_graph.json。"""
+    monkeypatch.setattr(sl, "DATA_META_DIR", tmp_path)          # 隔离输出（承 audit-M2 P2-5）
+    monkeypatch.setattr(sl, "OUT_DIR", tmp_path / "out")
+    r = sl.run(write=True)
+    f = tmp_path / sl.CONCEPT_GRAPH_ARTIFACT
+    assert f.exists() and (tmp_path / "out" / sl.CONCEPT_GRAPH_ARTIFACT).exists()
+    cg = json.loads(f.read_text(encoding="utf-8"))
+    assert cg["counts"]["concepts"] == 36
+    assert cg["counts"]["realized_by_edges"] == 67              # 与 eval-M4 §2 锚一致
+    assert r["concept_realized_by"]["counts"]["realized_by_edges"] == 67
+    assert "semantic_concept_graph.json" in r["concept_realized_by"]["materialization"]
+    tbl = {n["name"] for n in load_graph_json(L0_GRAPH_JSON).nodes.values()
+           if n["label"] == "Table"}
+    rb = [e for e in cg["edges"] if e["type"] == "REALIZED_BY"]
+    assert len(rb) == 67
+    for e in rb:
+        assert e["dst"].split(":", 1)[1] in tbl and e["quote_hash"]   # 落盘边仍可回溯
+    assert all(n["label"] in ("Concept", "EvidenceSrc") for n in cg["nodes"])
 
 
 # ================================================================ 3 指标语义层确未实现
@@ -264,8 +400,6 @@ def test_hub_and_coupling_from_real_edges(router, fresh_graph, kept_pairs):
             assert frozenset((pair["src"], pair["dst"])) in kept_pairs, pair
 
 
-
-
 # ================================================================ 7 拒绝臆造兜底
 def test_refuses_unknown_table(router):
     a = router.answer("zzz_not_a_table 关联哪些表？")
@@ -280,6 +414,120 @@ def test_metric_query_refused_out_of_scope(router):
     assert a["answer"] is None and a["sources"] == []
     assert "指标" in a["matched_params"]["out_of_scope_terms"][0] or \
         any("指标" in x or "口径" in x for x in a["matched_params"]["out_of_scope_terms"])
+
+
+def test_p2_3_u6_03_phantom_domain_refused_with_empty_sources(router):
+    """P2-3（u6-03 根因翻转）：域不存在 → refused=True 且**不追加 Domain 出处**。"""
+    a = router.answer("D99 域概览与质量问题？")
+    assert a["intent"] == "community_rollup"
+    assert a["refused"] is True
+    assert a["sources"] == []                                   # 兑现 refused⇒sources==[]
+    assert [s for s in a["sources"] if s.get("kind") == "Domain"] == []
+    assert a["answer"]["l1_domain_summary"]["exists"] is False
+
+
+def test_p2_3_existing_domain_still_carries_domain_source(router):
+    a = router.answer("D14 域的概览与质量问题？")
+    assert a["refused"] is False
+    assert [s for s in a["sources"] if s["kind"] == "Domain" and s["domain"] == "D14"]
+
+
+# ================================================================ P2-4 方向词表 + intent 白名单
+@pytest.mark.parametrize("q,d", [
+    ("jf_customer 依赖哪些表？", "in"),                 # 高频上游词
+    ("jf_invoice 的血缘来自哪些表？", "in"),
+    ("jf_x 属于哪个上游？", "in"),
+    ("谁依赖 jf_customer？", "out"),                    # 最长匹配：谁依赖(out) 压 依赖(in)
+    ("改了 jf_product 影响哪些表？", "out"),
+    ("jf_customer 关联哪些表？", None),                  # 无方向词
+])
+def test_p2_4_direction_vocab(router, q, d):
+    assert router.extract(q)["direction"] == d
+
+
+def test_p2_4_no_direction_falls_back_both_not_default_out(router):
+    a = router.answer("jf_product", intent="impact_lineage")
+    assert a["matched_params"]["direction"] is None
+    assert a["answer"]["direction"] == "both"                  # 不默认 out
+    assert "回退" in a["note"] and "默认下游" in a["note"]      # 反问式提示
+
+
+def test_p2_4_ambiguous_direction_falls_back_both(router):
+    a = router.answer("jf_product 影响哪些表又依赖哪些表？")
+    assert a["intent"] == "impact_lineage"
+    assert a["matched_params"]["direction"] == "ambiguous"
+    assert a["answer"]["direction"] == "both"
+    assert "歧义" in a["note"]
+
+
+def test_p2_4_explicit_direction_still_exact(router, fresh_graph):
+    a = router.answer("谁依赖 jf_customer？")
+    assert a["answer"]["direction"] == "out"
+    for p in a["answer"]["paths"]:                             # 回退不牺牲正确方向
+        assert _edge_exists(fresh_graph, p["from"], p["to"])
+
+
+def test_p2_4_intent_whitelist_rejects_unknown(router):
+    with pytest.raises(ValueError):
+        router.answer("jf_product 关联哪些表？", intent="not_an_intent")
+    with pytest.raises(ValueError):                            # 内部守卫态不可手工注入
+        router.answer("jf_product 关联哪些表？", intent="out_of_scope")
+    ok = router.answer("jf_product 关联哪些表？", intent="find_relations")
+    assert ok["intent"] == "find_relations"
+
+
+# ================================================================ P2-6 FTS 打开收窄
+def test_p2_6_open_fts_missing_file_none(tmp_path, monkeypatch):
+    monkeypatch.setattr(nlr, "FTS_DB", tmp_path / "absent.db")
+    assert nlr.NLRouter._open_fts() is None                    # 无索引（文件不存在）
+
+
+def test_p2_6_open_fts_unbuilt_db_none(tmp_path, monkeypatch):
+    p = tmp_path / "empty.db"
+    sqlite3.connect(str(p)).close()                            # 合法 sqlite 但未建索引表
+    monkeypatch.setattr(nlr, "FTS_DB", p)
+    assert nlr.NLRouter._open_fts() is None                    # 无索引（未建表）
+
+
+def test_p2_6_open_fts_corrupt_raises(tmp_path, monkeypatch):
+    p = tmp_path / "junk.db"
+    p.write_bytes(b"definitely-not-a-sqlite-file")
+    monkeypatch.setattr(nlr, "FTS_DB", p)
+    with pytest.raises(sqlite3.DatabaseError):                 # 损坏 ≠ 无索引：不再静默 None
+        nlr.NLRouter._open_fts()
+
+
+def test_p2_6_real_index_opens(router):
+    assert router.fts is not None                              # 仓库现状：索引存在且已建
+
+
+# ================================================================ P1-2 指纹消费校验
+def test_fp_interface_statuses():
+    assert fpmod.verify_input_fingerprint({}, name="x")[
+        "status"] == "absent_upstream_not_embedded"            # 上游未嵌入 → 放行留痕
+    rec = fpmod.verify_input_fingerprint({"input_fingerprint": "abc"}, name="x")
+    assert rec["status"] == "observed_no_baseline" and rec["fingerprint"] == "abc"
+    assert fpmod.verify_input_fingerprint({"input_fingerprint": {"digest": "abc"}},
+                                          name="x", expected="abc")["status"] == "ok"
+    with pytest.raises(fpmod.InputFingerprintMismatch):        # 不一致 → fail-fast
+        fpmod.verify_input_fingerprint({"input_fingerprint": "abc"}, name="x",
+                                       expected="zzz")
+
+
+def test_p1_2_handoff_carries_fingerprint_check(handoff):
+    c = handoff["isolated_a"]["fingerprint_check"]
+    assert c["artifact"] == "community_result.json"
+    assert c["status"] in ("absent_upstream_not_embedded", "observed_no_baseline", "ok")
+
+
+def test_p1_2_router_l2_check_and_failfast():
+    r = nlr.NLRouter()
+    r.l2()
+    assert r.input_fingerprint_checks["global_analysis"][
+        "status"] in ("absent_upstream_not_embedded", "observed_no_baseline", "ok")
+    bad = nlr.NLRouter(expected_input_fingerprint="deadbeef-not-a-real-digest")
+    with pytest.raises(fpmod.InputFingerprintMismatch):
+        bad.l2()                                               # 期望基准不一致 → 拒绝消费
 
 
 # ================================================================ NL 确定性（同输入同输出）

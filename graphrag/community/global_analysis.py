@@ -21,6 +21,7 @@ from collections import defaultdict
 import networkx as nx
 
 from .communities import build_subgraph, detect_communities, community_metrics
+from . import source_fingerprint
 
 
 # ---------------------------------------------------------------- 枢纽 TopN
@@ -164,6 +165,7 @@ def global_analysis(write: bool = True, top: int = 10) -> dict:
         "authoritative_domain_source": "00 §四 (M1 graph node.domain)",
         "community_role": "analysis_view_only",
     }
+    source_fingerprint.embed(result, write=write)
     if write:
         from .communities import DATA_META_DIR, OUT_DIR
         payload = json.dumps(result, ensure_ascii=False, indent=2)

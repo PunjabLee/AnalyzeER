@@ -4,11 +4,12 @@
   "semantic_layer_scope": "structural",
   "scope_statement": "本层为**结构语义**（业务域分区 / 实体三分类 / 字段 DDL COMMENT 含义 / D14+全局 KV 枚举码表），全部可回溯到 er-model/* 或 test_erp.sql COMMENT；**不含指标语义层**。",
   "input_sources": [
-    "er-model/*",
-    "test_erp.sql",
-    "graphrag/data/l0_graph.json",
-    "graphrag/data/meta/community_*"
+    "graphrag/data/l0_graph.json（M1 快照：Table/Column/Domain/Issue；Column.semantic=DDL COMMENT 原文，最终仲裁者 test_erp.sql）",
+    "er-model/05-跨域核心关系总览.md §二（实体三分类权威清单，直接读取）",
+    "graphrag/ingest/config.py 冻结常量（00 §四 每域声明表数，M0 口径）"
   ],
+  "input_sources_note": "P2-5 纠偏：旧版误列 `community_*` 为输入。本模块不读 M3 产物；M3 `community_*` 的只读消费发生在同包 `m3_p2_handoff.py`（含 P1-2 `input_fingerprint` 消费校验）与 `graphrag/nl/`。",
+  "upstream_fingerprint": "P1-2（消费侧接口预留）：读 community_*/全局结果处接住 `input_fingerprint`，不一致 fail-fast；生产者嵌入由 M3/eval 侧负责（graphrag/semantic/fingerprint.py，本模块不产出指纹）。",
   "out_of_scope": [
     {
       "item": "指标/KPI 定义",
@@ -79986,7 +79987,10 @@
   "enum_semantics": {
     "code_table_count": 29,
     "kv_dict_count": 4,
-    "inline_enum_count": 490,
+    "inline_enum_count": 477,
+    "inline_enum_needs_review_count": 0,
+    "inline_enum_declined_count": 13,
+    "p1_1_note": "P1-1 修复：旧口径 490（单位数+可选分隔）→ 新口径 = accepted（显式分隔 + 1~2 位整码 + 值键唯一） + needs_review（同码多义，不落映射） + declined（旧版曾入选、现降级的受影响列审计）。",
     "detail": {
       "code_tables": [
         {
@@ -82892,7 +82896,7 @@
               "label": "核销单"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "收款单"
             }
           ],
@@ -82984,27 +82988,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "a3faaf5c8c39f2a9"
-          }
-        },
-        {
-          "table": "jf_customer_credit_info",
-          "column": "is_overdue",
-          "domain": "D04",
-          "raw_comment": "逾期(0 未逾期 1 逾期)",
-          "values": [
-            {
-              "value": "0",
-              "label": "未逾期"
-            },
-            {
-              "value": "1",
-              "label": "逾期"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "9b0cfb527c9bccd1"
           }
         },
         {
@@ -84536,27 +84519,6 @@
           }
         },
         {
-          "table": "jf_inventory_organization",
-          "column": "is_sample",
-          "domain": "D10",
-          "raw_comment": "是否剪板（0否/1是）",
-          "values": [
-            {
-              "value": "0",
-              "label": "否"
-            },
-            {
-              "value": "1",
-              "label": "是"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "9f975bb9184e57cf"
-          }
-        },
-        {
           "table": "jf_inventory_transfer_frozen",
           "column": "change_type",
           "domain": "D10",
@@ -85083,27 +85045,6 @@
           }
         },
         {
-          "table": "jf_oa_workflow_config",
-          "column": "status",
-          "domain": "D16",
-          "raw_comment": "状态(0正常 1停用)",
-          "values": [
-            {
-              "value": "0",
-              "label": "正常"
-            },
-            {
-              "value": "1",
-              "label": "停用"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "f233976d75c47364"
-          }
-        },
-        {
           "table": "jf_overdue_order_allowed_tag_record",
           "column": "oa_status",
           "domain": "D04",
@@ -85210,16 +85151,8 @@
               "label": "当前月"
             },
             {
-              "value": "6",
-              "label": "日"
-            },
-            {
               "value": "3",
               "label": "次月"
-            },
-            {
-              "value": "1",
-              "label": "日"
             }
           ],
           "source": {
@@ -85305,48 +85238,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "763c34697c51e3f0"
-          }
-        },
-        {
-          "table": "jf_pay_request",
-          "column": "status",
-          "domain": "D04",
-          "raw_comment": "状态(0正常 1停用)",
-          "values": [
-            {
-              "value": "0",
-              "label": "正常"
-            },
-            {
-              "value": "1",
-              "label": "停用"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "c185744464dbc8b3"
-          }
-        },
-        {
-          "table": "jf_pay_request",
-          "column": "sync_status",
-          "domain": "D04",
-          "raw_comment": "同步订单状态：1成功,0失败",
-          "values": [
-            {
-              "value": "1",
-              "label": "成功"
-            },
-            {
-              "value": "0",
-              "label": "失败"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "3ee09bba1110e157"
           }
         },
         {
@@ -86031,7 +85922,7 @@
             },
             {
               "value": "2",
-              "label": "本期退货但销售不在本"
+              "label": "本期退货但销售不在本期"
             }
           ],
           "source": {
@@ -86758,27 +86649,6 @@
         },
         {
           "table": "jf_reservation_stock",
-          "column": "is_exempt_deposit",
-          "domain": "D02",
-          "raw_comment": "免收订金:1=是,0否",
-          "values": [
-            {
-              "value": "1",
-              "label": "是"
-            },
-            {
-              "value": "0",
-              "label": "否"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "0cbff1065ea2a3c8"
-          }
-        },
-        {
-          "table": "jf_reservation_stock",
           "column": "is_star_customer",
           "domain": "D02",
           "raw_comment": "标星客户: 1=是,0=否",
@@ -86863,35 +86733,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "47e523a19b508e82"
-          }
-        },
-        {
-          "table": "jf_reservation_stock",
-          "column": "prepare_type",
-          "domain": "D02",
-          "raw_comment": "备货类型: 8客订、9米样板、10备坯、11备纱",
-          "values": [
-            {
-              "value": "8",
-              "label": "客订"
-            },
-            {
-              "value": "9",
-              "label": "米样板"
-            },
-            {
-              "value": "0",
-              "label": "备坯"
-            },
-            {
-              "value": "1",
-              "label": "备纱"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "fc3f40cecfcbbcb1"
           }
         },
         {
@@ -87008,27 +86849,6 @@
         },
         {
           "table": "jf_reservation_stock_import",
-          "column": "is_exempt_deposit",
-          "domain": "D02",
-          "raw_comment": "免收订金:1=是,0否",
-          "values": [
-            {
-              "value": "1",
-              "label": "是"
-            },
-            {
-              "value": "0",
-              "label": "否"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "2ff0a5bc67bdfbb0"
-          }
-        },
-        {
-          "table": "jf_reservation_stock_import",
           "column": "is_star_customer",
           "domain": "D02",
           "raw_comment": "标星客户: 1=是,0=否",
@@ -87113,35 +86933,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "245477684373ff9a"
-          }
-        },
-        {
-          "table": "jf_reservation_stock_import",
-          "column": "prepare_type",
-          "domain": "D02",
-          "raw_comment": "备货类型: 8客订、9米样板、10备坯、11备纱",
-          "values": [
-            {
-              "value": "8",
-              "label": "客订"
-            },
-            {
-              "value": "9",
-              "label": "米样板"
-            },
-            {
-              "value": "0",
-              "label": "备坯"
-            },
-            {
-              "value": "1",
-              "label": "备纱"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "55b66fef39b57c29"
           }
         },
         {
@@ -87789,23 +87580,23 @@
               "label": "台巨标签"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "品牌部中文"
             },
             {
-              "value": "1",
+              "value": "11",
               "label": "品牌部英文"
             },
             {
-              "value": "2",
+              "value": "12",
               "label": "金士达标签"
             },
             {
-              "value": "3",
+              "value": "13",
               "label": "中英文标签"
             },
             {
-              "value": "4",
+              "value": "14",
               "label": "金瑞纺织标签"
             }
           ],
@@ -87837,27 +87628,6 @@
           }
         },
         {
-          "table": "jf_role_trader_mapping",
-          "column": "delete_status",
-          "domain": "D16",
-          "raw_comment": "状态(1删除 0正常)",
-          "values": [
-            {
-              "value": "1",
-              "label": "删除"
-            },
-            {
-              "value": "0",
-              "label": "正常"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "e73f04922c361e4d"
-          }
-        },
-        {
           "table": "jf_sales_order",
           "column": "cut_sheet_is_use_discount",
           "domain": "D01",
@@ -87876,27 +87646,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "173f13e615e117f6"
-          }
-        },
-        {
-          "table": "jf_sales_order",
-          "column": "deduct_mode",
-          "domain": "D01",
-          "raw_comment": "抵扣模式：1整单抵扣，0部分抵扣",
-          "values": [
-            {
-              "value": "1",
-              "label": "整单抵扣"
-            },
-            {
-              "value": "0",
-              "label": "部分抵扣"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "99647b14a0247ef2"
           }
         },
         {
@@ -88310,43 +88059,43 @@
               "label": "已锁缸"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "已派单"
             },
             {
-              "value": "1",
+              "value": "11",
               "label": "拣货中"
             },
             {
-              "value": "2",
+              "value": "12",
               "label": "已出数"
             },
             {
-              "value": "3",
+              "value": "13",
               "label": "待发进仓"
             },
             {
-              "value": "4",
+              "value": "14",
               "label": "派车"
             },
             {
-              "value": "5",
+              "value": "15",
               "label": "待发出仓"
             },
             {
-              "value": "6",
+              "value": "16",
               "label": "付运"
             },
             {
-              "value": "7",
+              "value": "17",
               "label": "送达"
             },
             {
-              "value": "9",
+              "value": "99",
               "label": "异常"
             },
             {
-              "value": "8",
+              "value": "98",
               "label": "下单中"
             }
           ],
@@ -88398,10 +88147,6 @@
             {
               "value": "2",
               "label": "剪"
-            },
-            {
-              "value": "4",
-              "label": "版"
             }
           ],
           "source": {
@@ -88901,43 +88646,43 @@
               "label": "已锁缸"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "已派单"
             },
             {
-              "value": "1",
+              "value": "11",
               "label": "拣货中"
             },
             {
-              "value": "2",
+              "value": "12",
               "label": "已出数"
             },
             {
-              "value": "3",
+              "value": "13",
               "label": "待发进仓"
             },
             {
-              "value": "4",
+              "value": "14",
               "label": "派车"
             },
             {
-              "value": "5",
+              "value": "15",
               "label": "待发出仓"
             },
             {
-              "value": "6",
+              "value": "16",
               "label": "付运"
             },
             {
-              "value": "7",
+              "value": "17",
               "label": "送达"
             },
             {
-              "value": "9",
+              "value": "99",
               "label": "异常"
             },
             {
-              "value": "8",
+              "value": "98",
               "label": "下单中"
             }
           ],
@@ -88989,10 +88734,6 @@
             {
               "value": "2",
               "label": "剪"
-            },
-            {
-              "value": "4",
-              "label": "版"
             }
           ],
           "source": {
@@ -89225,31 +88966,6 @@
             "file": "test_erp.sql",
             "section": null,
             "quote_hash": "13f4054dcda2d203"
-          }
-        },
-        {
-          "table": "jf_sales_order_detail",
-          "column": "error_code",
-          "domain": "D01",
-          "raw_comment": "错误码(0001=库存不足，0002=需手工对色，0003-006=预警/其他异常)",
-          "values": [
-            {
-              "value": "1",
-              "label": "库存不足"
-            },
-            {
-              "value": "2",
-              "label": "需手工对色"
-            },
-            {
-              "value": "6",
-              "label": "预警"
-            }
-          ],
-          "source": {
-            "file": "test_erp.sql",
-            "section": null,
-            "quote_hash": "5614ac672858fd74"
           }
         },
         {
@@ -89660,31 +89376,31 @@
               "label": "拣货中"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "已出数"
             },
             {
-              "value": "1",
+              "value": "11",
               "label": "待发进仓"
             },
             {
-              "value": "2",
+              "value": "12",
               "label": "派车"
             },
             {
-              "value": "3",
+              "value": "13",
               "label": "待发出仓"
             },
             {
-              "value": "4",
+              "value": "14",
               "label": "付运"
             },
             {
-              "value": "5",
+              "value": "15",
               "label": "送达"
             },
             {
-              "value": "6",
+              "value": "16",
               "label": "已取消"
             }
           ],
@@ -90038,10 +89754,6 @@
             {
               "value": "2",
               "label": "剪"
-            },
-            {
-              "value": "4",
-              "label": "版"
             }
           ],
           "source": {
@@ -90644,7 +90356,7 @@
             },
             {
               "value": "2",
-              "label": "含品牌及品牌下的供应"
+              "label": "含品牌及品牌下的供应链"
             },
             {
               "value": "3",
@@ -91337,11 +91049,11 @@
               "label": "米样板"
             },
             {
-              "value": "0",
+              "value": "10",
               "label": "备坯"
             },
             {
-              "value": "1",
+              "value": "11",
               "label": "备纱"
             }
           ],
@@ -91970,13 +91682,312 @@
             "section": null,
             "quote_hash": "98d9f4b2e704969f"
           }
+        }
+      ],
+      "inline_enums_needs_review": [],
+      "inline_enums_declined": [
+        {
+          "table": "jf_customer_credit_info",
+          "column": "is_overdue",
+          "domain": "D04",
+          "raw_comment": "逾期(0 未逾期 1 逾期)",
+          "legacy_sample": [
+            {
+              "value": "0",
+              "label": "未逾期"
+            },
+            {
+              "value": "1",
+              "label": "逾期"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "9b0cfb527c9bccd1"
+          }
+        },
+        {
+          "table": "jf_inventory_organization",
+          "column": "is_sample",
+          "domain": "D10",
+          "raw_comment": "是否剪板（0否/1是）",
+          "legacy_sample": [
+            {
+              "value": "0",
+              "label": "否"
+            },
+            {
+              "value": "1",
+              "label": "是"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "9f975bb9184e57cf"
+          }
+        },
+        {
+          "table": "jf_oa_workflow_config",
+          "column": "status",
+          "domain": "D16",
+          "raw_comment": "状态(0正常 1停用)",
+          "legacy_sample": [
+            {
+              "value": "0",
+              "label": "正常"
+            },
+            {
+              "value": "1",
+              "label": "停用"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "f233976d75c47364"
+          }
+        },
+        {
+          "table": "jf_pay_request",
+          "column": "status",
+          "domain": "D04",
+          "raw_comment": "状态(0正常 1停用)",
+          "legacy_sample": [
+            {
+              "value": "0",
+              "label": "正常"
+            },
+            {
+              "value": "1",
+              "label": "停用"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "c185744464dbc8b3"
+          }
+        },
+        {
+          "table": "jf_pay_request",
+          "column": "sync_status",
+          "domain": "D04",
+          "raw_comment": "同步订单状态：1成功,0失败",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "成功"
+            },
+            {
+              "value": "0",
+              "label": "失败"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "3ee09bba1110e157"
+          }
+        },
+        {
+          "table": "jf_reservation_stock",
+          "column": "is_exempt_deposit",
+          "domain": "D02",
+          "raw_comment": "免收订金:1=是,0否",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "是"
+            },
+            {
+              "value": "0",
+              "label": "否"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "0cbff1065ea2a3c8"
+          }
+        },
+        {
+          "table": "jf_reservation_stock",
+          "column": "prepare_type",
+          "domain": "D02",
+          "raw_comment": "备货类型: 8客订、9米样板、10备坯、11备纱",
+          "legacy_sample": [
+            {
+              "value": "8",
+              "label": "客订"
+            },
+            {
+              "value": "9",
+              "label": "米样板"
+            },
+            {
+              "value": "0",
+              "label": "备坯"
+            },
+            {
+              "value": "1",
+              "label": "备纱"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "fc3f40cecfcbbcb1"
+          }
+        },
+        {
+          "table": "jf_reservation_stock_import",
+          "column": "is_exempt_deposit",
+          "domain": "D02",
+          "raw_comment": "免收订金:1=是,0否",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "是"
+            },
+            {
+              "value": "0",
+              "label": "否"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "2ff0a5bc67bdfbb0"
+          }
+        },
+        {
+          "table": "jf_reservation_stock_import",
+          "column": "prepare_type",
+          "domain": "D02",
+          "raw_comment": "备货类型: 8客订、9米样板、10备坯、11备纱",
+          "legacy_sample": [
+            {
+              "value": "8",
+              "label": "客订"
+            },
+            {
+              "value": "9",
+              "label": "米样板"
+            },
+            {
+              "value": "0",
+              "label": "备坯"
+            },
+            {
+              "value": "1",
+              "label": "备纱"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "55b66fef39b57c29"
+          }
+        },
+        {
+          "table": "jf_role_trader_mapping",
+          "column": "delete_status",
+          "domain": "D16",
+          "raw_comment": "状态(1删除 0正常)",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "删除"
+            },
+            {
+              "value": "0",
+              "label": "正常"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "e73f04922c361e4d"
+          }
+        },
+        {
+          "table": "jf_sales_order",
+          "column": "deduct_mode",
+          "domain": "D01",
+          "raw_comment": "抵扣模式：1整单抵扣，0部分抵扣",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "整单抵扣"
+            },
+            {
+              "value": "0",
+              "label": "部分抵扣"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "99647b14a0247ef2"
+          }
+        },
+        {
+          "table": "jf_sales_order_detail",
+          "column": "error_code",
+          "domain": "D01",
+          "raw_comment": "错误码(0001=库存不足，0002=需手工对色，0003-006=预警/其他异常)",
+          "legacy_sample": [
+            {
+              "value": "1",
+              "label": "库存不足"
+            },
+            {
+              "value": "2",
+              "label": "需手工对色"
+            },
+            {
+              "value": "6",
+              "label": "预警"
+            }
+          ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+          "source": {
+            "file": "test_erp.sql",
+            "section": null,
+            "quote_hash": "5614ac672858fd74"
+          }
         },
         {
           "table": "sidebar_node",
           "column": "type",
           "domain": "OT",
           "raw_comment": "类型(0系统内;1系统外;2导入系统内)",
-          "values": [
+          "legacy_sample": [
             {
               "value": "0",
               "label": "系统内"
@@ -91990,6 +92001,8 @@
               "label": "导入系统内"
             }
           ],
+          "reason": "P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；此列旧版系无分隔采样或多位码截断（如 10→0），不再产出机读映射",
+          "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
           "source": {
             "file": "test_erp.sql",
             "section": null,
@@ -92000,7 +92013,8 @@
     }
   },
   "concept_realized_by": {
-    "note": "Concept 节点 + REALIZED_BY 边（结构语义，仅 05 点名且可定位者；无法定位者 status=[待确认]，不臆造绑定）",
+    "note": "Concept 节点 + REALIZED_BY 边（结构语义，仅 05 点名且可定位者；无法定位者 status=[待确认]，不臆造绑定）。P2-5：run(write=True) **实落盘** semantic_concept_graph.json。",
+    "materialization": "graphrag/data/meta/semantic_concept_graph.json",
     "concepts": [
       {
         "concept_id": "concept:master:8001c9c1be96a59b",
@@ -93710,13 +93724,19 @@
           "quote_hash": "295f67bb835c81c9"
         }
       }
-    ]
+    ],
+    "counts": {
+      "concepts": 36,
+      "realized_by_edges": 67,
+      "supported_by_edges": 67,
+      "evidence_nodes_new": 36
+    }
   },
   "honest_boundaries": [
     "字段含义仅取 DDL COMMENT 原文；无 COMMENT 者标 [待确认]，不臆造。",
-    "实体三分类的 REALIZED_BY 仅绑 `05` 点名且命中物理 Table 节点者（A 级可遍历 / B 级影子登记 tier+traversable）；无同名表者 [待确认]。",
+    "实体三分类的 REALIZED_BY 仅绑 `05` 点名且命中物理 Table 节点者（A 级可遍历 / B 级影子登记 tier+traversable）；无同名表者 [待确认]；叠加层经 run(write=True) 落盘 semantic_concept_graph.json。",
     "码表(D14)枚举值域=表内数据行，DDL/文档不硬编码 → 不落具体常量值（不臆造）。",
-    "内联枚举逐字取自 COMMENT，附 raw_comment 供逐条回溯。",
+    "内联枚举（P1-1）：显式分隔符 + 1~2 位整数码 + 值键唯一方可落库；同码多义→needs_review 不落映射；无分隔写法→declined 仅审计。逐条附 raw_comment 回溯。",
     "指标/KPI/术语表超范围，未实现（见 out_of_scope）。"
   ]
 }
