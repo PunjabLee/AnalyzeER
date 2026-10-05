@@ -21,6 +21,24 @@
 - `global_analysis`：全局 map-reduce 确定性版（枢纽 TopN / 域间最紧耦合 / 按域综述）。
 - `nmi_vs_baseline`：涌现社区 vs 18 域 NMI + 混淆映射 + 差异簇可解释清单。
 - `summarizer`：LLM 摘要接口 stub（默认禁用）。
+
+导出消歧（终轮 CodeReview **P2-③** / RUNBOOK 风险表 **N-7**、§7.6-③）：
+`global_analysis.py` / `nmi_vs_baseline.py` 的**模块名与其中的主函数同名**，旧写法
+`from .global_analysis import global_analysis` 会把**包属性**由子模块**覆盖**成函数，
+于是"按属性名打补丁 / 反射"的消费方静默拿到函数对象（例：eval ①档同源探针需 patch
+模块属性 `build_subgraph`，函数没有该属性 → 0 捕获；`_m3_gate.py` 的
+`from graphrag.community import nmi_vs_baseline as n` 会撞 `AttributeError`）。
+现约定：**包属性 = 子模块对象**（可 patch、可取内部符号），函数以不重名别名导出：
+- 调用入口 `graphrag.community.run_global_analysis(...)` ＝
+  `graphrag.community.global_analysis.global_analysis(...)`（同一函数对象，别名不改语义；
+  命名与既有 `run as run_communities` 一致）。对照层同理 `run_nmi_vs_baseline`。
+- 模块入口 `graphrag.community.global_analysis` ＝ 子模块（**非**函数）。
+- 既有 import 路径零影响：`from graphrag.community.global_analysis import global_analysis`
+  （nl_router / semantic 走这条）与 `importlib.import_module("graphrag.community…")`
+  （eval 探针 / M3 测试走这条）取到的仍是子模块与其中的同名函数。
+- 唯一语义变化：`from graphrag.community import global_analysis`（或 `nmi_vs_baseline`）
+  现得**模块**；若仍当函数调用 → `TypeError: 'module' object is not callable`（响亮失败，
+  不再静默拿错对象）。仓内**无**该用法的消费方（grep 实测），仓外若有需改用 `run_*` 别名。
 """
 
 from .communities import (  # noqa: F401
@@ -28,11 +46,19 @@ from .communities import (  # noqa: F401
     REFERENCES_TYPE, RELATES_TO_TYPE,
 )
 from .community_summary import profile_communities  # noqa: F401
-from .global_analysis import global_analysis  # noqa: F401
-from .nmi_vs_baseline import nmi_vs_baseline  # noqa: F401
+# P2-③：不再用同名函数覆盖子模块属性；包属性 `global_analysis`/`nmi_vs_baseline` 保持为子模块
+from .global_analysis import global_analysis as run_global_analysis  # noqa: F401
+from .nmi_vs_baseline import nmi_vs_baseline as run_nmi_vs_baseline  # noqa: F401
 
 __all__ = [
+    # 融合 / 检测 / 画像（函数）
     "ingest_edges", "build_fused_graph", "detect_communities", "run_communities",
-    "profile_communities", "global_analysis", "nmi_vs_baseline",
+    "profile_communities",
+    # 全局与对照入口（函数；P2-③ 消歧后不再与同名子模块争用包属性）
+    "run_global_analysis", "run_nmi_vs_baseline",
+    # 子模块（按**模块对象**消费：打补丁 / 反射 / 取内部符号）
+    "communities", "community_summary", "global_analysis", "nmi_vs_baseline",
+    "source_fingerprint",
+    # 常量
     "REFERENCES_TYPE", "RELATES_TO_TYPE",
 ]

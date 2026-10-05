@@ -8,8 +8,13 @@
 - 缺依赖文件 → 行为明确（`FileNotFoundError`，绝不对未读到的源伪造指纹）；
 - 消费端 dormant：`extract` 接住 digest；无基准 → `observed_no_baseline`（放行留痕），
   注入基准且一致 → `ok`；陈旧基准 → `InputFingerprintMismatch`；
-- **关键护栏**：`community_edges.jsonl`（逐行 JSONL）不得混入顶层指纹对象
-  （否则 eval-gate `run_golden.load_kept_pairs()` 取 `r["src"]` 会 KeyError）。
+- **关键护栏**：`community_edges.jsonl`（逐行 JSONL）不得混入顶层指纹对象。
+  现消费侧 = eval 的 `graphrag/eval/kept_source.py`，kept 集由**三档实时同源**供给
+  （①与 `router.l2()` **同一次** `build_subgraph()` 的探针捕获 ②`recompute_kept()`
+  独立重算 ③`independent_grounding()` 从 M1/M2 原始实物独立回溯出处）；磁盘那份
+  **只作陈旧对照**，由 `read_disk_kept()` 逐行按 `r["src"]/r["dst"]` 解析 → 混入顶层
+  指纹键即破行形（KeyError → 记为 malformed）。
+  （旧 `run_golden.load_kept_pairs()` 已随 P1-2「双源消除」删除，勿再引用该名。）
 """
 
 from __future__ import annotations
@@ -141,7 +146,8 @@ def test_community_edges_jsonl_not_polluted():
         if not line.strip():
             continue
         r = json.loads(line)
-        assert "src" in r and "dst" in r               # 每行仍是可被 load_kept_pairs 读的边记录
+        # 纯边记录：eval kept_source.read_disk_kept()（陈旧对照档）按 src/dst 解析每行
+        assert "src" in r and "dst" in r
         assert sf.FIELD not in r                        # 未混入顶层指纹对象
         n += 1
     assert n == comm.run(write=False)["result"]["ingestion"]["kept_edges"]

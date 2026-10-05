@@ -283,8 +283,8 @@ class SemanticLayer:
             "code_tables": self._code_tables(),
             "kv_dictionaries": self._kv_dictionaries(),
             "inline_enums_from_comment": accepted,
-            "inline_enums_needs_review": review,     # 值键冲突 → 不落映射（P1-1）
-            "inline_enums_declined": declined,       # P1-1 影响的旧版入选列（审计）
+            "inline_enums_needs_review": review,     # P2-④：全列同码多义、无一可留（[待确认]）
+            "inline_enums_declined": declined,       # P2-④：逐对校验后无一个有效码值的旧采样列（审计）
         }
 
     def _code_tables(self) -> list[dict]:
@@ -325,16 +325,26 @@ class SemanticLayer:
         return out
 
     def _inline_enums(self) -> tuple[list[dict], list[dict], list[dict]]:
-        """DDL COMMENT 内联枚举（值→义）——**P1-1 修复口径**。
+        r"""DDL COMMENT 内联枚举（值→义）——**P2-④ 逐对(per code:label pair)口径**。
 
-        返回 `(accepted, needs_review, declined)` 三分：
-        - **accepted**：≥2 对显式分隔值义、且**值键唯一**（同一码值只允许一个标签；
-          同值同义重复出现按首次出现去重）——可安全机读落库；逐条附 raw_comment
-          供 test_erp.sql 原文逐字回溯。
-        - **needs_review**：同值键出现多标签（真冲突）→ **不落映射**，标 `[待确认]`，
-          绝不静默产出错映射（承评审"值键唯一断言"要求）。
-        - **declined**：旧版正则曾入选、但按 P1-1 口径不再可机读者（无显式分隔符 /
-          多位数截断风险 / 可证对数不足）→ 仅审计留痕，含义仍在 `field_meanings` 原文可查。
+        真实缺陷是"粒度"（旧口径整列原子判定），非数据本身：旧版只要某列出现"同码多义"
+        或"通过严格正则的对不足 2"，即**整列连坐**降级（混排写法如 `免收订金:1=是,0否` 里
+        那个良好的 `1=是` 也被 `0否` 拖累而丢失）。P2-④ 改为**逐对独立判定**（承 P1-1 全部
+        硬约束），返回 `(accepted, needs_review, declined)`：
+
+        - **accepted**：列内**每个 `码→标签` 对独立校验**——须 1~2 位整数码 + 显式分隔符
+          `[:：=\-]` + `(?<!\d)` 防截断（由 `_ENUM_PAIR_RE` 构造保证），且**同列值键唯一**。
+          凡通过的对**逐对**入映射（`values` 为通过的码值，≥1 即成枚举条目；单码注释如
+          `1=是` 亦如实登记，不再因"整列不足 2 对"被原子丢弃）。同值同义重复按首次去重。
+          若某列同时存在被剔的**畸形/冲突单对**，逐条记入该列的 `dropped_pairs`（保留审计）。
+        - **needs_review**：某列**全部**码值都同码多义（无一可通过唯一性）→ 整列 `[待确认]`，
+          **绝不**产出错映射（部分可留者不进此栏，改由 accepted + `dropped_pairs` 承接）。
+        - **declined**：列内无任何通过逐对校验的码值、且旧单位数正则曾采样 ≥2 码 → 列级审计
+          留痕（承 P1-1），含义仍见 `raw_comment`。
+
+        硬守不变量：accepted 每列 `values` **值键唯一**；绝不把多位码截断（`10:备坯` 保留 `10`，
+        不塌成 `0:备坯`）、绝不把日期/单位数字（`16日`/`2024-01-01`）臆造成枚举。逐条附
+        `raw_comment` 供 test_erp.sql 原文逐字回溯。
         """
         accepted, review, declined = [], [], []
         for t in sorted(self.a_tables):
@@ -342,35 +352,54 @@ class SemanticLayer:
                 sem = (self.columns[t][cname].get("semantic") or "").strip()
                 if not sem:
                     continue
-                pairs = _ENUM_PAIR_RE.findall(sem)
-                uniq_vals = {v for v, _ in pairs}
-                if len(pairs) >= 2 and len(uniq_vals) >= 2:
-                    labels_by_val: dict[str, set[str]] = defaultdict(set)
-                    for v, lab in pairs:
-                        labels_by_val[v].add(lab)
-                    conflicts = {v: sorted(ls) for v, ls in labels_by_val.items()
-                                 if len(ls) > 1}
-                    # 值键唯一断言的落库形态：按首次出现去重（同值同义不重复计）
-                    seen_v: set[str] = set()
-                    dvals = []
-                    for v, lab in pairs:
-                        if v in seen_v:
-                            continue
-                        seen_v.add(v)
-                        dvals.append({"value": v, "label": lab})
+                # 逐对严格校验：_ENUM_PAIR_RE 命中即满足"1~2 位整码 + 显式分隔 + 防截断"
+                strict = list(_ENUM_PAIR_RE.finditer(sem))
+                # 同列值键唯一：按码聚合标签 → 检出"同码多义"真冲突
+                labels_by_val: dict[str, set[str]] = defaultdict(set)
+                for m in strict:
+                    labels_by_val[m.group(1)].add(m.group(2))
+                kept: list[dict] = []
+                seen: set[str] = set()
+                conflicts: dict[str, list[str]] = {}
+                for m in strict:
+                    v, lab = m.group(1), m.group(2)
+                    if len(labels_by_val[v]) > 1:          # 真冲突 → 该码各对逐对剔除
+                        conflicts[v] = sorted(labels_by_val[v])
+                        continue
+                    if v in seen:                          # 同值同义重复 → 按首次去重
+                        continue
+                    seen.add(v)
+                    kept.append({"value": v, "label": lab})
+                # 畸形候选（旧单位数正则会误采、但非通过校验者）：逐对审计，不落映射
+                dropped_malformed = self._malformed_pairs(sem, [m.span() for m in strict])
+
+                if kept:                                   # ≥1 通过对 → accepted（逐对）
                     rec = {
                         "table": t, "column": cname, "domain": self.table_domain[t],
-                        "raw_comment": sem,
-                        "values": dvals,
+                        "raw_comment": sem, "values": kept,
                         "source": _src("test_erp.sql", None, f"{t}.{cname}|{sem}"),
                     }
-                    if conflicts:                      # 值键冲突 → 降级不入映射（P1-1）
-                        rec["conflicts"] = conflicts
-                        rec["status"] = "[待确认]（值键冲突：同码多义，不落映射）"
-                        review.append(rec)
-                    else:
-                        accepted.append(rec)
-                else:
+                    audit: list[dict] = []
+                    for v, labs in conflicts.items():
+                        audit.append({"value": v, "labels": labs, "kind": "conflict",
+                                      "reason": ("P2-④：同码多义（本列值键冲突）→ 逐对剔除该"
+                                                 "码、保留其余有效码值（不再整列连坐）")})
+                    for d in dropped_malformed:
+                        audit.append({**d, "kind": "malformed",
+                                      "reason": ("P2-④：旧单位数正则误采候选（缺显式分隔符 / "
+                                                 "多位码截断 / 日期·单位数字）→ 逐对剔除，"
+                                                 "不落映射")})
+                    if audit:                              # 真正被剔的单对留审计（可回溯）
+                        rec["dropped_pairs"] = audit
+                    accepted.append(rec)
+                elif strict:                               # 有对但全部多义 → 无一可留
+                    review.append({
+                        "table": t, "column": cname, "domain": self.table_domain[t],
+                        "raw_comment": sem, "conflicts": conflicts,
+                        "status": "[待确认]（值键冲突：全列同码多义，无唯一码值，不落映射）",
+                        "source": _src("test_erp.sql", None, f"{t}.{cname}|{sem}"),
+                    })
+                else:                                      # 无严格对 → 旧版采样列级审计
                     legacy = _ENUM_PAIR_LEGACY_RE.findall(sem)
                     if len(legacy) >= 2 and len({v for v, _ in legacy}) >= 2:
                         declined.append({
@@ -378,13 +407,29 @@ class SemanticLayer:
                             "raw_comment": sem,
                             "legacy_sample": [{"value": v, "label": lab}
                                               for v, lab in legacy],
-                            "reason": ("P1-1：要求显式分隔符 [:：=-] 且 1~2 位整数码；"
-                                       "此列旧版系无分隔采样或多位码截断（如 10→0），"
-                                       "不再产出机读映射"),
-                            "status": "[待确认]（枚举机读降级；含义仍见 raw_comment）",
+                            "reason": ("P1-1/P2-④：要求显式分隔符 [:：=-] 且 1~2 位整数码；"
+                                       "逐对校验后本列**无一个**通过者（全为无分隔采样或多位码"
+                                       "截断，如 10→0），不再产出机读映射（含义仍见 raw_comment）"),
+                            "status": "[待确认]（枚举机读降级；逐对校验后仍无有效码值）",
                             "source": _src("test_erp.sql", None, f"{t}.{cname}|{sem}"),
                         })
         return accepted, review, declined
+
+    @staticmethod
+    def _malformed_pairs(sem: str, strict_spans: list[tuple[int, int]]) -> list[dict]:
+        """逐对降级审计：旧单位数正则的候选 `码→标签` 中，**未被任一严格对覆盖**者即畸形对
+        （无显式分隔符 / 多位码截断 / 日期·单位数字）。以字符区间重叠判定"覆盖"，故
+        `10:备坯` 的截断残留 `0:备坯` 与严格对 `10:备坯` 区间重叠 → 不误记为独立畸形对；
+        而 `0否`（`免收订金:1=是,0否`）、`16日` 中的 `6:日` 等未被覆盖 → 记为畸形审计。
+        **仅审计、绝不落映射。**
+        """
+        out: list[dict] = []
+        for lm in _ENUM_PAIR_LEGACY_RE.finditer(sem):
+            s, e = lm.span()
+            if any(not (e <= a or s >= b) for a, b in strict_spans):   # 与某严格对区间重叠
+                continue
+            out.append({"value": lm.group(1), "label": lm.group(2)})
+        return out
 
     # ------------------------------------------------------ Concept 图（含 REALIZED_BY）
     def build_concept_graph(self) -> tuple[PropertyGraph, dict]:
@@ -474,10 +519,13 @@ class SemanticLayer:
                 "inline_enum_count": len(enums["inline_enums_from_comment"]),
                 "inline_enum_needs_review_count": len(enums["inline_enums_needs_review"]),
                 "inline_enum_declined_count": len(enums["inline_enums_declined"]),
-                "p1_1_note": ("P1-1 修复：旧口径 490（单位数+可选分隔）→ 新口径 = "
-                              "accepted（显式分隔 + 1~2 位整码 + 值键唯一）"
-                              " + needs_review（同码多义，不落映射）"
-                              " + declined（旧版曾入选、现降级的受影响列审计）。"),
+                "p2_4_note": ("P2-④ 逐对(per-pair)：承 P1-1 硬约束（显式分隔符 + "
+                              "1~2 位整数码 + 负向前瞻防截断 + 同列值键唯一），把旧"
+                              "口径的整列原子降级改为逐对判定——通过的码对逐个入 "
+                              "accepted（含单码注释，≥1 即成条目），仅真正冲突/畸形的"
+                              "单对被剔（记入该列 dropped_pairs 审计）；全列同码多义者"
+                              "进 needs_review；逐对后无一有效者进 declined。"
+                              "accepted/declined 计数随之如实变化（见测试）。"),
                 "detail": enums,
             },
             "concept_realized_by": {
@@ -491,7 +539,7 @@ class SemanticLayer:
                 "字段含义仅取 DDL COMMENT 原文；无 COMMENT 者标 [待确认]，不臆造。",
                 "实体三分类的 REALIZED_BY 仅绑 `05` 点名且命中物理 Table 节点者（A 级可遍历 / B 级影子登记 tier+traversable）；无同名表者 [待确认]；叠加层经 run(write=True) 落盘 semantic_concept_graph.json。",
                 "码表(D14)枚举值域=表内数据行，DDL/文档不硬编码 → 不落具体常量值（不臆造）。",
-                "内联枚举（P1-1）：显式分隔符 + 1~2 位整数码 + 值键唯一方可落库；同码多义→needs_review 不落映射；无分隔写法→declined 仅审计。逐条附 raw_comment 回溯。",
+                "内联枚举（P1-1 + P2-④ 逐对）：显式分隔符 + 1~2 位整数码 + 负向前瞻防截断 + 同列值键唯一方可落库；逐对判定，通过的码对逐个入映射（≥1 即成条目），仅真正冲突/畸形单对被剔并入该列 dropped_pairs 审计（不再整列连坐）；全列同码多义→needs_review；逐对后无一有效→declined。绝不截断多位码/误判日期。逐条附 raw_comment 回溯。",
                 "指标/KPI/术语表超范围，未实现（见 out_of_scope）。",
             ],
         }

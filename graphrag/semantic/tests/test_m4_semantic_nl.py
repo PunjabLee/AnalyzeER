@@ -14,8 +14,9 @@
 8. **LLM stub 默认禁用**：`ENABLED=False`，调用即抛 NotImplementedError。
 9. **M3 P2 承接**：75 孤立 A 表名单落盘且覆盖等式闭合；9 混合簇逐条标 `对照观察(非发现物)`；
    golden 入口交接声明 6 意图 + LLM 禁用。
-10. **P1-1 内联枚举**：显式分隔符 + 1~2 位整码 + 值键唯一；多位码不截断、日期数字不入选、
-    同码多义降级 needs_review、旧版入选现降级者入 declined 审计。
+10. **P1-1 内联枚举**：显式分隔符 + 1~2 位整码 + 值键唯一；多位码不截断、日期数字不入选。
+    **P2-④ 逐对(per-pair)**：不再整列连坐——通过的对逐个入 accepted（含单码注释），仅真正
+    冲突/畸形单对被剔（记入该列 dropped_pairs 审计）；全列同码多义→needs_review；逐对后无一有效→declined。
 11. **P2-4 方向词表**：上游（依赖/来自/属于→in）、下游（谁依赖/影响→out）；方向不可判 →
     UC4/UC5 回退 both + 反问提示（不默认 out）；`answer(intent=)` 非法 id → ValueError。
 12. **P2-6 FTS 打开**：文件不存在/索引未建 → None；**索引损坏 → 抛出**（区分两种语义）。
@@ -189,13 +190,15 @@ def test_enum_semantics_all_sourced(layer):
         assert kv["source"]["quote_hash"]
     for ie in en["inline_enums_from_comment"]:
         assert ie["source"]["file"] == "test_erp.sql"
-        assert ie["raw_comment"] and len(ie["values"]) >= 2     # 逐字可回溯 + ≥2 值义对
+        # P2-④ 逐对：通过的对逐个入库，≥1 即成条目（不再要求整列 ≥2 对）
+        assert ie["raw_comment"] and len(ie["values"]) >= 1
         vals = [p["value"] for p in ie["values"]]
-        # P1-1：落库值键**唯一**（同码多义者不在 accepted，见 needs_review）
-        assert len(vals) == len(set(vals)), (ie["table"], ie["column"])
-    for rv in en["inline_enums_needs_review"]:
-        assert rv["conflicts"] and "待确认" in rv["status"]      # 冲突 → 不落映射只留痕
-    for dl in en["inline_enums_declined"]:
+        assert len(vals) == len(set(vals)), (ie["table"], ie["column"])  # 值键唯一
+        for dp in ie.get("dropped_pairs", []):     # 被剔单对仅审计，附 kind/reason
+            assert dp["kind"] in ("conflict", "malformed") and dp["reason"]
+    for rv in en["inline_enums_needs_review"]:     # 全列多义 → 不落映射只留痕
+        assert rv["conflicts"] and "待确认" in rv["status"]
+    for dl in en["inline_enums_declined"]:         # 逐对后无一有效 → 列级审计
         assert dl["legacy_sample"] and "P1-1" in dl["reason"]
 
 
@@ -220,9 +223,11 @@ def _synthetic_layer():
                column_count=4)
     specs = {
         "multi": "10:备坯，11:备纱，16:付运",                    # 多位码 → accepted 不截断
-        "dup": "1:草稿，2:已取消，1:拣货中",                     # 同码多义 → needs_review
+        "dup": "1:草稿，2:已取消，1:拣货中",                     # 同码多义 → 冲突码逐对剔、2 留
         "nosep": "状态(0正常 1停用)",                            # 无分隔 → declined 审计
         "datey": "生效日期 2024-01-01 至 2024-12-31 为界",        # 日期 → 不落任何映射
+        "single": "是否生产延期:1=是",                           # 单码注释 → P2-④ 逐对入库
+        "mixed": "免收订金:1=是,0否",                            # 混排(1 好 0 畸)→ 逐对挽回
     }
     for c, txt in specs.items():
         g.add_node(f"column:jf_enumtest.{c}", "Column", name=c, table_id="jf_enumtest",
@@ -231,16 +236,28 @@ def _synthetic_layer():
 
 
 def test_p1_1_synthetic_three_way_split():
+    """P2-④ 逐对：通过者入 accepted（含单码/混排挽回），真冲突码被剔，畸形/无分隔审计。"""
     acc, rev, dec = _synthetic_layer()._inline_enums()
     by_col = lambda rows: {r["column"]: r for r in rows}
     a, r, d = by_col(acc), by_col(rev), by_col(dec)
-    assert set(a) == {"multi"}
+    assert set(a) == {"multi", "dup", "single", "mixed"}        # 逐对：通过者均入映射
+    assert set(r) == set()                                      # 无整列全多义者
+    assert set(d) == {"nosep"}                                  # 逐对后仍无一有效→列级审计
     assert [p["value"] for p in a["multi"]["values"]] == ["10", "11", "16"]  # 未截断
-    assert set(r) == {"dup"}
-    assert set(r["dup"]["conflicts"]["1"]) == {"草稿", "拣货中"}              # 冲突留痕
-    assert set(d) == {"nosep"}                                                # 旧版入选→降级审计
-    assert "1" not in a and "2" not in a                                     # 冲突列未混入映射
-    assert "datey" not in a and "datey" not in r and "datey" not in d         # 日期彻底不入选
+    # dup：冲突码 1(草稿/拣货中) 逐对剔除、有效码 2 保留（不再整列连坐）
+    assert [p["value"] for p in a["dup"]["values"]] == ["2"]
+    dc = next(x for x in a["dup"]["dropped_pairs"] if x["kind"] == "conflict")
+    assert dc["value"] == "1" and set(dc["labels"]) == {"草稿", "拣货中"}
+    # 单码注释如实入库
+    assert [p["value"] for p in a["single"]["values"]] == ["1"]
+    # 混排写法：挽回良好对 1=是，畸形对 0否 仅审计不落映射
+    assert a["mixed"]["values"] == [{"value": "1", "label": "是"}]
+    dm = next(x for x in a["mixed"]["dropped_pairs"] if x["kind"] == "malformed")
+    assert dm["value"] == "0" and dm["label"] == "否"
+    for col in ("multi", "dup", "single", "mixed"):            # 值键唯一硬约束
+        vs = [p["value"] for p in a[col]["values"]]
+        assert vs and len(vs) == len(set(vs))
+    assert "datey" not in a and "datey" not in r and "datey" not in d  # 日期彻底不入选
 
 
 def test_p1_1_real_status_multidigit_fixed(layer):
@@ -268,13 +285,76 @@ def test_p1_1_prepare_type_wrong_mapping_removed(layer):
                for x in dec)
 
 
-def test_p1_1_counts_490_to_new(built):
-    """如实报告：旧 490 → accepted + needs_review + declined（旧入选者去向可全量对账）。"""
+def test_p2_4_per_pair_counts_and_reconciliation(built):
+    """P2-④ 逐对：如实报告计数变化（不再整列连坐），并与旧 490 宇宙对账。
+
+    旧口径（终轮 P1-1，整列原子）：accepted=477（严格对 ≥2 且值键唯一）+
+    declined=13（严格对 <2 者整列降级）= 490（旧单位数正则入选列宇宙）。
+    P2-④ 逐对：
+      accepted 477 → 497 = 477（旧 accepted 全部保留、取值逐字不变）+
+        2 混排列挽回（is_exempt `免收订金:1=是,0否` 取 `1=是`，`0否`→dropped_pairs）+
+        18 单码注释列（如 `1=是`/`类型 0:无`）此前被 ≥2 门槛整列丢弃（既非 accepted
+        亦非 declined，属漏采），现逐对如实入库（超旧 490 宇宙，1 值且无 dropped）。
+      declined 13 → 11（2 混排列离开 declined）；needs_review 恒 0（无整列全多义者）。
+    对账：497 - 18 单码新增 = 479（旧宇宙内 accepted）；479 + 11 declined = 490（旧宇宙全覆盖）。
+    """
     es = built["enum_semantics"]
-    assert es["inline_enum_count"] == 477
-    assert es["inline_enum_needs_review_count"] == 0      # 新口径下真冲突为 0（截断根因已修）
-    assert es["inline_enum_declined_count"] == 13         # 受影响列清单（审计留痕）
-    assert es["inline_enum_count"] + es["inline_enum_declined_count"] == 490
+    assert es["inline_enum_count"] == 497
+    assert es["inline_enum_needs_review_count"] == 0
+    assert es["inline_enum_declined_count"] == 11
+    acc = es["detail"]["inline_enums_from_comment"]
+    single_code_new = [a for a in acc if len(a["values"]) == 1
+                       and "dropped_pairs" not in a]
+    assert len(single_code_new) == 18                       # 逐对挽回的单码新增列
+    old_universe_acc = es["inline_enum_count"] - len(single_code_new)  # 属旧 490 宇宙
+    assert old_universe_acc + es["inline_enum_declined_count"] == 490  # 旧宇宙全覆盖对账
+    for a in acc:                                           # 每列值键唯一 + ≥1 码值
+        vs = [p["value"] for p in a["values"]]
+        assert vs and len(vs) == len(set(vs)), (a["table"], a["column"])
+
+
+# ---------------------------------------------------------------- P2-④ 逐对判定
+def test_p2_4_real_data_recovers_mixed_writing_columns(layer):
+    """P2-④ 点名：两列 `免收订金:1=是,0否` 由整列 declined 挽回为 accepted（取 1=是）。"""
+    acc, rev, dec = layer._inline_enums()
+    for t in ("jf_reservation_stock", "jf_reservation_stock_import"):
+        rec = next(x for x in acc if x["table"] == t and x["column"] == "is_exempt_deposit")
+        # 良好码对逐个入映射；本列仅 1 个通过（1=是）
+        assert rec["values"] == [{"value": "1", "label": "是"}], (t, rec["values"])
+        # 畸形单对 0否 逐对剔除并入 dropped_pairs 审计（不再整列连坐丢 1=是）
+        dm = [d for d in rec["dropped_pairs"] if d["kind"] == "malformed"]
+        assert {"value": "0", "label": "否"} in [{k: d[k] for k in ("value", "label")} for d in dm]
+        # 该列已离开 declined
+        assert not any(x["table"] == t and x["column"] == "is_exempt_deposit" for x in dec)
+
+
+def test_p2_4_no_multidigit_truncation_regression(layer):
+    """P2-④ 硬约束：逐对放宽不得回流多位码截断（10→0 / 0001→1）。"""
+    acc, rev, dec = layer._inline_enums()
+    for t in ("jf_reservation_stock", "jf_reservation_stock_import"):
+        # prepare_type `8客订、9米样板、10备坯、11备纱` 无显式分隔 → 逐对后无一有效 → 仍 declined
+        assert not any(x["table"] == t and x["column"] == "prepare_type" for x in acc)
+        assert any(x["table"] == t and x["column"] == "prepare_type" for x in dec)
+    # 任何 accepted 记录都不得含"截断产物"值键 0=备坯 / 1=备纱 / 1=库存不足
+    banned = {("0", "备坯"), ("1", "备纱"), ("1", "库存不足"), ("2", "需手工对色")}
+    for a in acc:
+        for v in a["values"]:
+            assert (v["value"], v["label"]) not in banned, (a["table"], a["column"], v)
+
+
+def test_p2_4_all_conflict_column_goes_to_needs_review():
+    """真冲突仍拒：某列**全部**码值同码多义（无一可留）→ 整列 needs_review，不落映射。"""
+    g = PropertyGraph()
+    g.add_node("domain:D01", "Domain", domain_id="D01", tier="A", table_count=1)
+    g.add_node("table:jf_allconf", "Table", name="jf_allconf", tier="A", domain="D01",
+               column_count=1)
+    g.add_node("column:jf_allconf.st", "Column", name="st", table_id="jf_allconf",
+               semantic="1=启用，1=停用", data_type="tinyint", key_role=None)
+    acc, rev, dec = sl.SemanticLayer(graph=g)._inline_enums()
+    assert acc == [] and dec == []                             # 无一有效 → 不 accepted/declined
+    assert len(rev) == 1 and rev[0]["column"] == "st"
+    assert set(rev[0]["conflicts"]["1"]) == {"启用", "停用"}
+    assert "待确认" in rev[0]["status"]
 
 
 # ================================================================ 2 REALIZED_BY 图不虚构

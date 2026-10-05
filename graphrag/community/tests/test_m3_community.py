@@ -25,8 +25,9 @@ import pytest
 from graphrag.ingest.config import CONFIDENCE_DEFAULT_MIN, DOMAIN_DECLARED
 from graphrag.community import communities as comm
 
-# 包 __init__ 用 `from .nmi_vs_baseline import nmi_vs_baseline` 遮蔽了同名子模块属性，
-# 故经 importlib 取回子模块对象（避免 function/module 名称二义）。
+# 经 importlib 显式取**子模块对象**：本文件按「模块.函数」用法（nmi_mod.nmi_vs_baseline(...)）
+# 需要模块而非函数。P2-③ 消歧后包属性 `nmi_vs_baseline` 已恢复为子模块（详见包 docstring），
+# 此处仍保留显式模块路径，使"取模块"这一意图不依赖包属性语义。
 nmi_mod = importlib.import_module("graphrag.community.nmi_vs_baseline")
 
 
