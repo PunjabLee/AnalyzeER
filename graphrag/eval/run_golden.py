@@ -8,9 +8,24 @@
 - 阈值（Top-3≥90%、P95<2s/<8s）均 `[待确认]` → 本 harness **只报实测值，不判达标**。
 - 命中口径见 `golden/manifest.json.metric_taxonomies`：top3 / reachable(≤3 跳) / coverage / refused / oos_refused。
 - **独立回查**：UC3/UC4/UC5 返回的每条关系/路径边必须在 M1 图 `l0_graph.json` 真实邻接存在
-  且带 `source_file+quote_hash`；否则计入幻觉（期望 0）。耦合对回查 M3 kept 边集。
+  且带 `source_file+quote_hash`；否则计入幻觉（期望 0）。
+- **全局耦合对的回查基准（终轮 CodeReview P1-2 整改，双源已消除）**：不再读磁盘
+  `community_edges.jsonl` 当判据（旧法＝"实时算的耦合对 比 可能陈旧的磁盘 kept 集"，磁盘那份
+  一旦未随上游重跑就静默失真：假 FAIL，或更糟的假 PASS）。现由 `kept_source.resolve(router)`
+  供给三档**实时同源**基准：①与 `router.l2()` **同一次** `build_subgraph()` 捕获的 kept 集
+  （判据）＋②独立重算交叉相等（自洽佐证）＋③eval 自行从原始 M1 `l0_graph.json` RELATES_TO
+  邻接与 M2 `lineage_edges.jsonl` REFERENCES 重推的**独立实物出处集**（防"聚合层自洽却无出处"）。
+  磁盘那份降为**陈旧对照**（只报 drift），其指纹/摘要由 `graphrag/eval/kept_pairs_sidecar.json`
+  承载（JSONL 不得内嵌顶层键，M3 护栏锁定）。
+- **P1-2 指纹门**：消费 `community_*` JSON 产物处调用 `semantic.fingerprint.verify_json_file`
+  /`extract_fingerprint`（见 `kept_source.fingerprint_gate`）。**strict-on-enable 保持 dormant**：
+  默认不注入 expected 基准 → `observed_no_baseline` 放行留痕；`export
+  GRAPHRAG_EXPECTED_INPUT_FINGERPRINT=<digest>` 后，字段缺失或不一致即 `InputFingerprintMismatch`
+  中断评测（由编排者/门禁激活，本 agent 不擅自打开）。另有**恒开**的 freshness 判定：拿产物
+  声明的输入清单独立重算 sha256 比对，不需基准即可判"磁盘那份是否出自当前输入"。
 
 复现：`python -m graphrag.eval.run_golden`（两次逐 item 命中向量应完全一致 → 确定性）。
+附加开关：`-q` 静默逐题表；`--no-sidecar` 不落 `kept_pairs_sidecar.json`（内容确定，两次逐字节同）。
 """
 
 from __future__ import annotations
@@ -19,9 +34,10 @@ import json
 import time
 from pathlib import Path
 
-from ..ingest.config import L0_GRAPH_JSON, DATA_META_DIR, CONFIDENCE_DEFAULT_MIN, MAX_HOPS
+from ..ingest.config import L0_GRAPH_JSON, CONFIDENCE_DEFAULT_MIN, MAX_HOPS
 from ..store.loader import load_graph_json
 from ..nl.nl_router import NLRouter
+from . import kept_source
 
 GOLDEN = Path(__file__).resolve().parent / "golden" / "golden_set.jsonl"
 
@@ -127,8 +143,12 @@ def evaluate(item, res, g, adj_cache, kept_pairs):
     return {"hit": False, "reason": f"未知 metric={metric}"}
 
 
-def provenance_check(item, res, g, adj_cache, kept_pairs):
-    """独立回查 UC3/UC4/UC5/全局 返回的关系是否为图内真实边且有出处（幻觉计数）。"""
+def provenance_check(item, res, g, adj_cache, base):
+    """独立回查 UC3/UC4/UC5/全局 返回的关系是否为图内真实边且有出处（幻觉计数）。
+
+    `base` = `kept_source.resolve()` 的产物：`kept_pairs`（与 l2() 同源实时集）＋
+    `grounding_pairs`/`grounding_provenance`（原始 M1/M2 独立实物出处）。磁盘快照不参与判定。
+    """
     violations = []
     a = res.get("answer")
     if not isinstance(a, dict):
@@ -136,7 +156,6 @@ def provenance_check(item, res, g, adj_cache, kept_pairs):
     if item["metric"] in ("top3", "reachable") and item["uc"] in ("UC3", "UC4", "UC5"):
         if item["uc"] == "UC3":
             for r in a.get("relations", []):
-                base = item["assert"]
                 if r["confidence"] < CONFIDENCE_DEFAULT_MIN or r["has_uncertain"]:
                     violations.append(("gate", r["other"]))
                 if not (r["source_file"] and r["quote_hash"]):
@@ -157,30 +176,37 @@ def provenance_check(item, res, g, adj_cache, kept_pairs):
             for pv in h.get("sample_edge_provenance", []):
                 if not pv.get("file"):
                     violations.append(("hub_no_src", h["table"]))
+        kept_pairs = base["kept_pairs"]
+        grounded = base.get("grounding_pairs", set())
+        prov_map = base.get("grounding_provenance", {})
         tc = a.get("tightest_couplings", {})
         for cp in tc.get("cross_community_coupling", []):
             for pair in cp.get("sample_table_pairs", []):
-                if frozenset((pair["src"], pair["dst"])) not in kept_pairs:
-                    violations.append(("coupling_not_kept", (pair["src"], pair["dst"])))
+                key = frozenset((pair["src"], pair["dst"]))
+                if key not in kept_pairs:
+                    # 与答案同源的 kept 集都不认这条耦合 → 真·无据（非陈旧文件误报）
+                    violations.append(("coupling_not_in_live_kept", (pair["src"], pair["dst"])))
+                if key not in grounded:
+                    # 聚合层自洽还不够：必须能落到一条原始 M1/M2 实物边
+                    violations.append(("coupling_ungrounded", (pair["src"], pair["dst"])))
+                elif not any(p.get("file") and p.get("quote_hash") for p in prov_map.get(key, [])):
+                    violations.append(("coupling_no_provenance", (pair["src"], pair["dst"])))
     return violations
 
 
-def load_kept_pairs():
-    pairs = set()
-    path = DATA_META_DIR / "community_edges.jsonl"
-    if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                r = json.loads(line)
-                pairs.add(frozenset((r["src"], r["dst"])))
-    return pairs
-
-
-def run(verbose: bool = True) -> dict:
+def run(verbose: bool = True, write_sidecar: bool = True) -> dict:
+    t_start = time.perf_counter()
     items = load_items()
     router = NLRouter()
     g = load_graph_json(L0_GRAPH_JSON)
-    kept_pairs = load_kept_pairs()
+    # P1-2：耦合对回查基准＝与 router.l2() **同源**的实时 kept 集（+ 独立实物出处集）；
+    # 磁盘 community_edges.jsonl 只作陈旧/drift 对照，且其摘要落 sidecar 留痕。
+    # ⚠ 时延口径变更（如实登记）：l2() 现于**评测循环前**预热（同源供给所需），故逐题时延
+    #   不再含 M3 全局分析的一次性开销；该开销改由 `l2_warmup_ms` 单独披露（见 latency 块）。
+    t_w0 = time.perf_counter()
+    base = kept_source.resolve(router, write_sidecar=write_sidecar)
+    l2_warmup_ms = round((time.perf_counter() - t_w0) * 1000, 2)
+    kept_pairs = base["kept_pairs"]
     adj_cache: dict = {}
 
     rows = []
@@ -191,7 +217,7 @@ def run(verbose: bool = True) -> dict:
         res = router.answer(it["query_nl"])       # 端到端：不强制 intent，测真实 NL→结构化
         dt = time.perf_counter() - t0
         ev = evaluate(it, res, g, adj_cache, kept_pairs)
-        viol = provenance_check(it, res, g, adj_cache, kept_pairs)
+        viol = provenance_check(it, res, g, adj_cache, base)
         hall_total += len(viol)
         if it["uc"] in ("UC4", "UC5", "UC6", "GLOBAL"):
             lat_multi.append(dt)
@@ -246,10 +272,22 @@ def run(verbose: bool = True) -> dict:
         "hallucination": {
             "ungrounded_or_gate_violations": hall_total,
             "expected": 0,
-            "note": "UC3/UC4/UC5 关系/路径逐条回查 M1 图邻接 + quote_hash + conf≥0.45；全局耦合回查 M3 kept 边",
+            "note": ("UC3/UC4/UC5 关系/路径逐条回查 M1 图邻接 + quote_hash + conf≥0.45；"
+                     "全局耦合逐条回查**与 l2() 同源实时 kept 集** ∧ **原始 M1/M2 独立实物出处**"
+                     "（磁盘快照已降为陈旧对照，不作判据 → P1-2 双源消除）"),
         },
+        "coupling_recheck_baseline": {
+            k: v for k, v in base.items()
+            if k not in ("kept_pairs", "grounding_pairs", "grounding_provenance")},
         "latency_ms_p95": {"single_hop": p95(lat_single), "multi_hop_global": p95(lat_multi),
-                           "threshold": "单跳<2000 / 多跳<8000 [待确认]"},
+                           "threshold": "单跳<2000 / 多跳<8000 [待确认]",
+                           "l2_warmup_ms": l2_warmup_ms,
+                           "harness_total_ms": round((time.perf_counter() - t_start) * 1000, 2),
+                           "scope_note": ("逐题时延**不含** l2() 一次性预热（P1-2 同源供给需在"
+                                          "循环前完成，与旧版「首题含全局分析」口径不同）；"
+                                          "l2_warmup_ms/harness_total_ms 为一次性/整体开销披露。"
+                                          "本块三个字段均为**观测值**（非判定量），两次运行会因"
+                                          "缓存冷热浮动，命中向量与判定项不受影响。")},
         "intent_classification": {
             "n": len(rows),
             "match": sum(int(r["intent_match"]) for r in rows),
@@ -270,13 +308,26 @@ def _print(rows, s):
     for r in rows:
         print(f"{r['id']:8s} {r['uc']:6s} {r['intent']:16s} {r['metric']:10s} "
               f"{'HIT' if r['hit'] else 'MISS':4s} {r['reason']}")
+    print("\n=== COUPLING RECHECK BASELINE (P1-2 同源) ===")
+    b = s["coupling_recheck_baseline"]
+    print(f"authoritative : {b['authoritative_source']}")
+    print(f"live          : {b['live']}")
+    print(f"recompute     : {b['recompute_independent_build_subgraph']}")
+    print(f"grounding     : {b['grounding_from_raw_upstream']}")
+    print(f"disk(对照)    : {b['disk_snapshot_for_drift_only']}")
+    print(f"fingerprint   : " + json.dumps(
+        {n: f"{r['verify']['status']}/{r['freshness']}"
+         for n, r in b["fingerprint_gate"].items()}, ensure_ascii=False))
+    print(f"dormant       : {b['dormant']}")
+    if "sidecar" in b:
+        print(f"sidecar       : {b['sidecar']}")
     print("\n=== SUMMARY ===")
     print(json.dumps(s, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
     import sys
-    res = run(verbose="-q" not in sys.argv)
+    res = run(verbose="-q" not in sys.argv, write_sidecar="--no-sidecar" not in sys.argv)
     # 供复现：把逐 item 命中向量打印到 stdout（两次运行 diff 应空）
     vec = "".join("1" if r["hit"] else "0" for r in res["rows"])
     print("\nHIT_VECTOR:", vec)

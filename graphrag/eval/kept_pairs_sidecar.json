@@ -1,0 +1,90 @@
+{
+  "artifact": "kept_pairs_sidecar.json",
+  "authoritative_source": "live_same_invocation(NLRouter.l2() → global_analysis → build_subgraph)",
+  "capture": {
+    "cache_reset_before_capture": false,
+    "captures": 1
+  },
+  "disk_snapshot_for_drift_only": {
+    "drift_disk_only": 0,
+    "drift_live_only": 0,
+    "exists": true,
+    "file_sha256": "9d8787ed67e4c75d20a44304a1d26483ef60b3d5efa366ae3cba68a7e6c64511",
+    "identical_to_live": true,
+    "lines": 821,
+    "malformed_lines": 0,
+    "pairs": 477,
+    "pairs_sha256": "6ccc871c19bc48975fb32928d1fbc469033c294446a3f7c8ae181a2e80434dc4",
+    "path": "graphrag/data/meta/community_edges.jsonl",
+    "used_for_judging": false
+  },
+  "dormant": {
+    "env": "GRAPHRAG_EXPECTED_INPUT_FINGERPRINT",
+    "expected_baseline_declared": false,
+    "note": "默认未注入基准 → 只留痕不判脏（渐进上线现状）；注入基准后 run_golden 将在产物字段缺失/不一致处 fail-fast。"
+  },
+  "fingerprint_gate": {
+    "community_global_analysis.json": {
+      "baseline_declared": false,
+      "declared_inputs": [
+        "graphrag/data/l0_graph.json",
+        "graphrag/data/meta/lineage_edges.jsonl"
+      ],
+      "freshness": "fresh",
+      "verify_status": "observed_no_baseline"
+    },
+    "community_nmi_vs_baseline.json": {
+      "baseline_declared": false,
+      "declared_inputs": [
+        "graphrag/data/l0_graph.json",
+        "graphrag/data/meta/lineage_edges.jsonl"
+      ],
+      "freshness": "fresh",
+      "verify_status": "observed_no_baseline"
+    },
+    "community_profiles.json": {
+      "baseline_declared": false,
+      "declared_inputs": [
+        "graphrag/data/l0_graph.json",
+        "graphrag/data/meta/lineage_edges.jsonl"
+      ],
+      "freshness": "fresh",
+      "verify_status": "observed_no_baseline"
+    },
+    "community_result.json": {
+      "baseline_declared": false,
+      "declared_inputs": [
+        "graphrag/data/l0_graph.json",
+        "graphrag/data/meta/lineage_edges.jsonl"
+      ],
+      "freshness": "fresh",
+      "verify_status": "observed_no_baseline"
+    }
+  },
+  "generator": "graphrag/eval/kept_source.py",
+  "grounding_from_raw_upstream": {
+    "a_domain_tables": 349,
+    "agree_with_live": true,
+    "grounding_only_pairs": 0,
+    "live_only_pairs": 0,
+    "pairs": 477,
+    "pairs_sha256": "6ccc871c19bc48975fb32928d1fbc469033c294446a3f7c8ae181a2e80434dc4",
+    "records_grounded": {
+      "REFERENCES": 436,
+      "RELATES_TO": 385
+    }
+  },
+  "live": {
+    "kept_records": 821,
+    "pairs": 477,
+    "pairs_sha256": "6ccc871c19bc48975fb32928d1fbc469033c294446a3f7c8ae181a2e80434dc4"
+  },
+  "owner": "rag-eval-gate（graphrag/eval/** 唯一写入者）",
+  "purpose": "P1-2 消费侧：JSONL `community_edges.jsonl` 不得内嵌顶层指纹键，故由本 sidecar 承载其 kept 集摘要与上游 input_fingerprint 新鲜度判定；判据本身走实时同源（本文件不替代实时重建）。",
+  "recompute_independent_build_subgraph": {
+    "agree_with_live": true,
+    "pairs": 477,
+    "pairs_sha256": "6ccc871c19bc48975fb32928d1fbc469033c294446a3f7c8ae181a2e80434dc4",
+    "records": 821
+  }
+}
