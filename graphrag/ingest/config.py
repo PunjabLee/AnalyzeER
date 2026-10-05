@@ -65,13 +65,15 @@ _TAG_TO_LEVEL = [
     ("索引", "index_backed"),
     ("命名推断", "name_inferred"),
     ("字段命名", "name_inferred"),
+    ("命名", "name_inferred"),            # 裸标签 [命名]（01/D11 实测 ×6，原被静默降 unconfirmed）
     ("业务语义推断", "semantic_inferred"),
     ("语义推断", "semantic_inferred"),
+    ("语义", "semantic_inferred"),        # 裸标签 [语义]（01/D10 实测 ×2，与复合标签并存取强）
     ("待确认", "unconfirmed"),
 ]
 
 # 归入 name_inferred 家族的标签串（用于 evidence_tags=["name"]）
-_NAME_TOKENS = {"命名推断", "字段命名"}
+_NAME_TOKENS = {"命名推断", "字段命名", "命名"}
 _INDEX_TOKENS = {"索引佐证", "索引"}
 
 

@@ -144,6 +144,8 @@ def _parse_file(path: Path, source_label: str) -> tuple[list[dict], dict]:
             "cross_domain": ev["cross_domain"] or l_stub or r_stub,
             "polymorphic": ev["polymorphic"],
             "discriminant": ev["discriminant"],
+            # P1-2：has_uncertain 随边落库（供查询门默认隐藏，不再"算完即弃"）
+            "has_uncertain": ev["has_uncertain"],
             "malformed_connector": malformed,
             "left_cardinality": left_card,
             "connector": conn,

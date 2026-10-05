@@ -12,7 +12,13 @@
 - REFERENCES 边两端 Column 节点必存在（悬挂=0；不定指向者只进队列不建边）；
 - 逐边 evidence_src {file,table,column,quote_hash} 齐全（有出处率=100%）；
 - 逐边 evidence_level ∈ 五级枚举、is_inferred=true、confidence≤0.95（全库 0 FK 上限）；
-- 合并前后 M1 既有边计数不变（RELATES_TO/IS_COLUMN_OF/… 不被改写）。
+- 合并前后 M1 既有边计数不变（RELATES_TO/IS_COLUMN_OF/… 不被改写）；
+- **P1-1** 自环边（src_table==dst_table）必须 100% 带 `explicit_pair` 列对证据；
+- **P1-2** 成边集合内不得出现 `unconfirmed` / `has_uncertain`（存疑只入队）。
+
+公开入口（`graphrag/lineage/__init__` 对外承诺同名）：
+- `build_lineage(write=True)`（＝`build`，二者同一函数，M3/M4 按此名集成）；
+- `load_graph_with_lineage(min_conf=CONFIDENCE_DEFAULT_MIN, show_uncertain=False)`。
 """
 
 from __future__ import annotations
@@ -46,7 +52,20 @@ REVIEW_QUEUE = GRAPH_DIR / "review_queue.json"
 
 _DISCLAIMER = ("血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；"
                "证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，"
-               "不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤）。")
+               "不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤；"
+               "存疑文档线 P1-2 起不建边、只入队）。")
+
+
+def _edge_uncertain(e: dict) -> bool:
+    """REFERENCES 边是否"存疑"（与 M1 `search/l1._is_uncertain` 同判据 + 引文兜底）。
+
+    P1-2 后新构建的边集不应出现此类边；判据保留是给**已在图内的历史边**做查询门
+    （默认隐藏、不删边），以及防御外部手工写入的 jsonl。
+    """
+    if e.get("has_uncertain") or e.get("evidence_level") == "unconfirmed":
+        return True
+    quote = (e.get("evidence_src") or {}).get("quote") or ""
+    return "待确认" in quote
 
 
 def _base_graph():
@@ -59,8 +78,14 @@ def _base_graph():
     return res["graph"], {"mode": "pipeline_in_memory_rebuild", "path": None}
 
 
-def _merge_into_graph(graph, edges: list[dict]) -> dict:
-    """把 REFERENCES + EvidenceSrc + SUPPORTED_BY 增量写入回载图（内存）。"""
+def merge_edges_into_graph(graph, edges: list[dict]) -> dict:
+    """把 REFERENCES + EvidenceSrc + SUPPORTED_BY 写入图（内存）。
+
+    **构建态与回载态共用本函数**（P2 修复：此前 loader 另写一套，SUPPORTED_BY 丢
+    `dst_col`/`role`、且不重建 supporting_evidence 的 EvidenceSrc 节点/边 → 回载≠构建）。
+    SUPPORTED_BY 属性口径：`rel_kind=REFERENCES`、`dst_col=<目标列节点 id>`、
+    `role=primary|corroboration`（主证据 / 余证留痕）。
+    """
     added_ev = 0
     for e in edges:
         ev = e["evidence_src"]
@@ -74,8 +99,8 @@ def _merge_into_graph(graph, edges: list[dict]) -> dict:
         graph.add_edge(e["src"], e["dst"], REFERENCES_TYPE,
                        **{k: v for k, v in e.items() if k not in ("src", "dst", "type")})
         graph.add_edge(e["src"], ev_id, "SUPPORTED_BY", rel_kind=REFERENCES_TYPE,
-                       dst_col=e["dst"])
-        for sup in e["supporting_evidence"]:
+                       dst_col=e["dst"], role="primary")
+        for sup in e.get("supporting_evidence") or []:
             sid = f"evsrc:{sup['quote_hash']}"
             if not graph.has_node(sid):
                 graph.add_node(sid, "EvidenceSrc", file=sup["file"],
@@ -86,6 +111,9 @@ def _merge_into_graph(graph, edges: list[dict]) -> dict:
             graph.add_edge(e["src"], sid, "SUPPORTED_BY", rel_kind=REFERENCES_TYPE,
                            dst_col=e["dst"], role="corroboration")
     return {"evidence_nodes_added": added_ev}
+
+
+_merge_into_graph = merge_edges_into_graph        # 内部旧名兼容
 
 
 def _assertions(graph, edges: list[dict], pre_counts: dict) -> list[dict]:
@@ -112,6 +140,16 @@ def _assertions(graph, edges: list[dict], pre_counts: dict) -> list[dict]:
     chk("all_is_inferred", 0, len(non_inf))
     bad_scope = [e for e in edges if e["evidence_level"] == "explicit_fk"]
     chk("no_physical_fk_claim", 0, len(bad_scope))
+    # ---- P1-1：自环记法消解收口（负向断言）----
+    bad_self = [e for e in edges
+                if e["src_table"] == e["dst_table"]
+                and e["target_col_rule"] != "explicit_pair"]
+    chk("self_reference_explicit_pair_only", 0, len(bad_self),
+        "P1-1：src_table==dst_table 的 REFERENCES 必须 100% 带 explicit_pair 列对证据")
+    # ---- P1-2：存疑不入可见边集 ----
+    bad_unc = [e for e in edges if _edge_uncertain(e)]
+    chk("no_uncertain_reference_edge", 0, len(bad_unc),
+        "P1-2：unconfirmed / has_uncertain / 原文[待确认] 只入队，不成边")
     post = graph.counts()["edge_types"]
     for etype in ("RELATES_TO", "IS_COLUMN_OF", "DERIVED_FROM", "HAS_ISSUE",
                   "BELONGS_TO_DOMAIN", "SAME_FAMILY_AS", "SUPPORTED_BY"):
@@ -228,7 +266,7 @@ def build(write: bool = True) -> dict:
         "scope": {
             "includes": ["字段级引用/结构级 REFERENCES（列→列）",
                          "反向可达影响分析（加权 BFS，≤3 跳，默认 confidence≥0.45）",
-                         "多态/同名异指向/外部引用的队列化处置",
+                         "多态/同名异指向/外部引用/自环记法/存疑文档线的队列化处置",
                          "M1 4 pending + 9 derived 悬挂承接（登记与定级信息）"],
             "excludes": ["变换/ETL 数据流级血缘（如 sum(order.amount)→invoice.total）"
                          " —— **超本期范围**（schema §4.3/R-9），不建、不宣称",
@@ -242,10 +280,41 @@ def build(write: bool = True) -> dict:
                                 "name_inferred(唯一规范命名，含 catregory/datat 固化拼写映射)",
                                 "semantic_inferred(_code→pk_guess 列级猜测，降权)"],
             "misspell_map": {"category": "catregory", "data": "datat"},
-            "ambiguity_policy": "多候选/同名列异指向/COMMENT 多点名 → 一律入队列，不武断连通；"
+            "ambiguity_policy": "多候选/同名列异指向/COMMENT 多点名/自环记法解不出/存疑文档线 "
+                                "→ 一律入队列，不武断连通；"
                                 "后缀模糊匹配（如 cus_id→*cus）因误挂风险**不采用**",
         },
         "lineage_stats": stats,
+        "p1_fixes": {
+            "P1-1_self_loop_annotation": {
+                "rule": "文档线 src==dst 只是自环排版，**不得**降级为『本表自引用』错边："
+                        "①desc 点名唯一真实他表→取该真实目标；②desc 有显式 `t.col->t.col2` "
+                        "本表列对→才认自引用（rule=explicit_pair）；③解不出→入队 "
+                        "self_loop_annotation、不建列边。命名第 3 路解析目标==本表时同规。",
+                "invariant": "src_table==dst_table ⇒ target_col_rule=='explicit_pair'"
+                             "（断言 self_reference_explicit_pair_only=0）",
+                "queued": stats["queue_kinds"].get("self_loop_annotation", 0),
+                "self_references_kept": stats["self_references"],
+                "self_references_explicit_pair": stats["self_references_explicit_pair"],
+            },
+            "P1-2_uncertain_first_class_gate": {
+                "rule": "文档线 evidence_level==unconfirmed（无可用/未识别 `[证据]` 标签）或 "
+                        "has_uncertain=true（原文自带 `[待确认]`）→ **不建 REFERENCES 边**，"
+                        "入队 doc_line_uncertain（带 quote_hash）。",
+                "already_in_graph": "历史存疑边不删，由查询门 show_uncertain=false 默认隐藏"
+                                    "（与 M1 search/l1 同判据；承 evidence-confidence-map §1.1）",
+                "queued": stats["queue_kinds"].get("doc_line_uncertain", 0),
+                "uncertain_edges_built": stats["uncertain_edges_built"],
+            },
+            "P1-3_consumer_defaults": {
+                "min_conf": CONFIDENCE_DEFAULT_MIN,
+                "show_uncertain": False,
+                "entry": "load_graph_with_lineage(min_conf=CONFIDENCE_DEFAULT_MIN, "
+                         "show_uncertain=False)",
+            },
+            "multi_hop_policy": "逐边 confidence≥min_conf 为准入硬门；路径连乘仅作 path_score "
+                                "排序/优先展开，不作准入（防长链被连乘误杀，亦防低置信短路）。",
+        },
         "carryover": {k: v for k, v in carry.items() if not k.endswith("_items")},
         "uc_samples": {
             "UC5_downstream_jf_sales_order.id": {
@@ -255,7 +324,8 @@ def build(write: bool = True) -> dict:
                 k: uc4[k] for k in ("reached_columns", "edges_traversed")},
             "UC5_table_pivot_jf_sales_order": uc5t,
             "UC4_profile_outgoing": len(uc4p["outgoing_references"]),
-            "note": "默认 min_conf=0.45 / max_hops=3；确定性可复现（同输入同输出）",
+            "note": "默认 min_conf=0.45 / max_hops=3；确定性可复现（同输入同输出）；"
+                    "逐边硬门 + path_score 仅排序",
         },
         "anchors_conserved": {
             "traversable_A": 349, "relation_lines_xi": 456,
@@ -276,6 +346,11 @@ def build(write: bool = True) -> dict:
             "变换/ETL 数据流级血缘：超本期范围（M0 §4.3/R-9 既定排除），未实现。",
             "后缀模糊命名（raw_fabric_id→jf_goods_raw_fabric 一类 55 处）无 COMMENT/文档佐证者"
             "一律不建边（防误挂），已计入 dropped_naming_unresolved / target_unresolved 队列。",
+            "P1-1 自环记法解不出目标者（self_loop_annotation）仅登记命名线索 "
+            "naming_candidates，未自动连通；人工确认后方可补边（如 sales_order_id→jf_sales_order "
+            "一类『文档自环但命名链唯一可解』者，本期一律留队列，宁缺勿假）。",
+            "P1-2 存疑文档线（doc_line_uncertain）覆盖『原文明说关联不成立/目标不明』者；"
+            "其两端同持 via_column 的归属歧义线仍计入 doc_skipped.owner_ambiguous（未强判）。",
             "M1 RELATES_TO 两端同持 via_column 的归属歧义（owner_ambiguous）跳过列边生成，"
             "相关高危已由各自由 COMMENT/命名链路独立定指向（见 B-4 留痕队列项）。",
             "4 pending / 9 derived 悬挂的表级补边属 M1 写域，M2 仅承接登记 + DDL 结构定级信息，"
@@ -298,6 +373,10 @@ def build(write: bool = True) -> dict:
             "manifest": manifest, "checks": checks, "stats": stats}
 
 
+#: 对外承诺的唯一入口名（M3/M4 集成用；与 `build` 同一函数，避免照错名集成）
+build_lineage = build
+
+
 def table_impact_summary(graph, table: str) -> dict:
     r = reference_traverse(graph, table, None, "downstream")
     return {k: r[k] for k in ("seed_count", "reached_columns", "reached_tables",
@@ -314,6 +393,7 @@ def _export(graph, edges, queue, manifest) -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     REVIEW_QUEUE.write_text(json.dumps(
         {"milestone": "M2", "policy": "默认隐藏：confidence<0.45 / unconfirmed 不参与召回；"
+                                      "存疑文档线与解不出目标的自环记法只入队不成边（P1-1/P1-2）；"
                                       "人工确认可上调证据级（evidence-confidence-map §2）",
          "disclaimer": _DISCLAIMER,
          "counts": _queue_counts(queue),
@@ -332,32 +412,42 @@ def _queue_counts(queue: list[dict]) -> dict:
     return {"total": len(queue), "by_kind": dict(sorted(kinds.items()))}
 
 
-def load_graph_with_lineage(min_conf: float = 0.0):
+def load_graph_with_lineage(min_conf: float = CONFIDENCE_DEFAULT_MIN,
+                            show_uncertain: bool = False):
     """检索/消费侧只读入口：M1 快照 + M2 已交付 REFERENCES（单一事实源=两份文件，
-    合并发生在内存，不回写 l0_graph.json）。返回 (graph, edges_meta_loaded)。"""
+    合并发生在内存，不回写 l0_graph.json）。
+
+    默认口径（P1-3，对齐 spec `evidence-confidence-map.md` §1.1）：
+    - `min_conf=CONFIDENCE_DEFAULT_MIN`(0.45)：低于下限的边（semantic/unconfirmed）**不载入**；
+      需全量口径请显式传 `min_conf=0.0`。
+    - `show_uncertain=False`：`unconfirmed`/`has_uncertain`/引文带 `[待确认]` 的历史边默认隐藏
+      （**查询门过滤，不删文件里的边**，与 M1 `search/l1` 同判据）。
+    合并写入与构建态共用 `merge_edges_into_graph`（REFERENCES + SUPPORTED_BY
+    {rel_kind,dst_col,role} + EvidenceSrc 节点），故"回载 == 构建"。返回 (graph, meta)。
+    """
     graph = load_graph_json(L0_GRAPH_JSON)
     path = DATA_META_DIR / LINEAGE_EDGES
-    n = 0
+    loaded, hidden_conf, hidden_unc = [], 0, 0
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             if not line.strip():
                 continue
             e = json.loads(line)
             if e["confidence"] < min_conf:
+                hidden_conf += 1
                 continue
-            ev = e["evidence_src"]
-            ev_id = f"evsrc:{ev['quote_hash']}"
-            if not graph.has_node(ev_id):
-                graph.add_node(ev_id, "EvidenceSrc", file=ev["file"],
-                               section=ev.get("section"), table=ev["table"],
-                               column=ev["column"], quote_hash=ev["quote_hash"],
-                               line_hint=ev.get("line_hint"))
-            graph.add_edge(e["src"], e["dst"], REFERENCES_TYPE,
-                           **{k: v for k, v in e.items()
-                              if k not in ("src", "dst", "type")})
-            graph.add_edge(e["src"], ev_id, "SUPPORTED_BY", rel_kind=REFERENCES_TYPE)
-            n += 1
-    return graph, {"references_loaded": n, "source": str(path)}
+            if not show_uncertain and _edge_uncertain(e):
+                hidden_unc += 1
+                continue
+            loaded.append(e)
+    merge_info = merge_edges_into_graph(graph, loaded)
+    return graph, {"references_loaded": len(loaded),
+                   "references_in_file": len(loaded) + hidden_conf + hidden_unc,
+                   "hidden_below_min_conf": hidden_conf,
+                   "hidden_uncertain": hidden_unc,
+                   "min_conf": min_conf, "show_uncertain": show_uncertain,
+                   "evidence_nodes_added": merge_info["evidence_nodes_added"],
+                   "source": str(path)}
 
 
 if __name__ == "__main__":
@@ -367,6 +457,8 @@ if __name__ == "__main__":
         "all_pass": res["manifest"]["assertions"]["all_pass"],
         "references": st["references_total"],
         "by_evidence_level": st["by_evidence_level"],
+        "self_references": f"{st['self_references_explicit_pair']}/{st['self_references']}"
+                           f" explicit_pair",
         "queue": res["manifest"]["carryover"] | {"kinds": st["queue_kinds"],
                                                  "extractor_total":
                                                      st["queue_total_before_carryover"]},

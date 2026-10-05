@@ -9,6 +9,10 @@
 
 **通则**：所有关系边 is_inferred=true（全库 0 FK），回答须显式声明「逆向推断、非物理外键」。
 默认只召回 confidence ≥ CONFIDENCE_DEFAULT_MIN(0.45)。fts 可传 None（仅图查询，跳过全文近似）。
+
+**置信门（CodeReview P1 修复）**：`show_uncertain=False`（默认）时，带 `[待确认]`（has_uncertain）
+或 evidence_level=unconfirmed 的关系边在检索/遍历入口隐藏；`show_uncertain=True` 才按原低置信暴露。
+—— 查询期过滤，**不删边**，RELATES_TO=483 锚守恒。多跳为**逐边 conf≥min_conf**（无路径连乘）。
 """
 
 from __future__ import annotations
@@ -20,6 +24,11 @@ from ..ingest.config import CONFIDENCE_DEFAULT_MIN, MAX_HOPS
 _NO_FK_DISCLAIMER = (
     "关系为逆向推断、非物理外键（全库 0 显式外键）；最高证据仅至 comment_explicit。"
 )
+
+
+def _is_uncertain(e: dict) -> bool:
+    """边是否「存疑」：显式带 [待确认] 标记，或证据级落到 unconfirmed。"""
+    return bool(e.get("has_uncertain")) or e.get("evidence_level") == "unconfirmed"
 
 
 class L1Search:
@@ -67,14 +76,17 @@ class L1Search:
         fuzzy_tabs = []
         if self.fts is not None:
             fuzzy = self.fts.search(column, label="Column", limit=limit * 3)
-            fuzzy_tabs = sorted({h["name"].split(".")[0] for h in fuzzy})
+            # P1-4：Column 行 name 为**裸列名**（无 tbl. 前缀），旧 `.split(".")[0]` 恒等
+            # 于列名本身 → 把列名当表名的 bug。真实表名存于 FTS 行的 domain 字段
+            # （build 时 Column.domain = table_id）。
+            fuzzy_tabs = sorted({h["domain"] for h in fuzzy if h.get("domain")})
         return {"uc": "UC2", "column": column,
                 "exact_tables": sorted(exact), "exact_count": len(exact),
                 "semantic_tables": fuzzy_tabs[:limit]}
 
     # ------------------------------------------------------------ UC3
     def relations_of(self, table: str, min_conf: float = CONFIDENCE_DEFAULT_MIN,
-                     both: bool = True) -> dict:
+                     both: bool = True, show_uncertain: bool = False) -> dict:
         tid = f"table:{table}"
         if not self.g.has_node(tid):
             return {"uc": "UC3", "table": table, "exists": False, "relations": []}
@@ -89,6 +101,8 @@ class L1Search:
                 seen.add(key)
                 if e.get("confidence", 0) < min_conf:
                     continue
+                if not show_uncertain and _is_uncertain(e):   # 置信门：默认隐藏存疑边
+                    continue
                 other = e["dst"] if e["src"] == tid else e["src"]
                 rels.append({
                     "src": e["src"].split(":", 1)[1], "dst": e["dst"].split(":", 1)[1],
@@ -97,18 +111,26 @@ class L1Search:
                     "confidence": e["confidence"], "via_column": e["via_column"],
                     "is_inferred": e["is_inferred"], "cross_domain": e["cross_domain"],
                     "malformed_connector": e["malformed_connector"],
+                    "has_uncertain": bool(e.get("has_uncertain")),
                     "source_file": e["source_file"], "quote_hash": e.get("quote_hash"),
                 })
         rels.sort(key=lambda r: -r["confidence"])
         return {"uc": "UC3", "table": table, "exists": True,
-                "min_confidence": min_conf, "count": len(rels),
+                "min_confidence": min_conf, "show_uncertain": show_uncertain,
+                "count": len(rels),
                 "relations": rels, "disclaimer": _NO_FK_DISCLAIMER}
 
     # --------------------------------------------- 表级血缘/影响遍历
     def traverse(self, table: str, direction: str = "out",
                  max_hops: int = MAX_HOPS,
-                 min_conf: float = CONFIDENCE_DEFAULT_MIN) -> dict:
-        """BFS（带深度上限与置信剪枝）。仅走 A 级（neighbors traverse_tier='A'）。"""
+                 min_conf: float = CONFIDENCE_DEFAULT_MIN,
+                 show_uncertain: bool = False) -> dict:
+        """BFS（带深度上限与**逐边**置信剪枝）。仅走 A 级（neighbors traverse_tier='A'）。
+
+        P2 修复（direction='both' 无向邻域）：
+        - 按边身份去重（同一无向边只计一次，修「重复计入」）；
+        - 跳过已在当前路径链上的邻居（修「1 跳邻居是自己」/回溯自环）。
+        """
         start = f"table:{table}"
         if not self.g.has_node(start):
             return {"uc": "UC4/UC5(table-level)", "table": table, "exists": False, "paths": []}
@@ -116,39 +138,52 @@ class L1Search:
         visited = {start}
         queue = deque([(start, 0, [])])
         records = []
+        seen_edges: set[tuple] = set()
         frontier_at_budget = 0
         while queue:
             node, depth, path = queue.popleft()
             if depth >= max_hops:
-                frontier_at_budget += len(self._rel_edges(node, direction, min_conf))
+                frontier_at_budget += len(self._rel_edges(node, direction, min_conf,
+                                                           show_uncertain))
                 continue
-            for nb, e in self._iter_rel(node, direction, min_conf):
+            chain = [table] + path                 # 当前路径链上的表名（含起点）
+            for nb, e in self._iter_rel(node, direction, min_conf, show_uncertain):
+                ekey = (e["src"], e["dst"], e.get("quote_hash"))
+                if ekey in seen_edges:             # 无向边去重
+                    continue
+                seen_edges.add(ekey)
+                nb_name = nb.split(":", 1)[1]
+                if nb_name in chain:               # 跳过路径内已在的节点（含回到自己）
+                    continue
                 records.append({
-                    "from": node.split(":", 1)[1], "to": nb.split(":", 1)[1],
-                    "hop": depth + 1, "path": path + [nb.split(":", 1)[1]],
+                    "from": node.split(":", 1)[1], "to": nb_name,
+                    "hop": depth + 1, "path": path + [nb_name],
                     "cardinality": e["cardinality"], "evidence_level": e["evidence_level"],
                     "confidence": e["confidence"], "via_column": e["via_column"],
                     "source_file": e["source_file"], "quote_hash": e.get("quote_hash"),
                 })
                 if nb not in visited:
                     visited.add(nb)
-                    queue.append((nb, depth + 1, path + [nb.split(":", 1)[1]]))
+                    queue.append((nb, depth + 1, path + [nb_name]))
         return {"uc": "UC4/UC5(table-level)", "table": table, "exists": True,
                 "direction": direction, "max_hops": max_hops, "min_confidence": min_conf,
+                "show_uncertain": show_uncertain,
                 "reached_tables": len(visited) - 1, "edge_traversed": len(records),
                 "truncated_at_budget": frontier_at_budget > 0,
                 "frontier_edges_beyond_budget": frontier_at_budget,
                 "paths": records, "disclaimer": _NO_FK_DISCLAIMER}
 
-    def _iter_rel(self, node, direction, min_conf):
+    def _iter_rel(self, node, direction, min_conf, show_uncertain=False):
         dirs = ["out", "in"] if direction == "both" else [direction]
         for d in dirs:
             for nb, e in self.g.neighbors(node, "RELATES_TO", direction=d,
                                            min_conf=min_conf, traverse_tier="A"):
+                if not show_uncertain and _is_uncertain(e):   # 置信门
+                    continue
                 yield nb, e
 
-    def _rel_edges(self, node, direction, min_conf):
-        return list(self._iter_rel(node, direction, min_conf))
+    def _rel_edges(self, node, direction, min_conf, show_uncertain=False):
+        return list(self._iter_rel(node, direction, min_conf, show_uncertain))
 
     # ------------------------------------------------------------ UC6
     def domain_summary(self, domain: str) -> dict:

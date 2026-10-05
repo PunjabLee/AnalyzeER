@@ -6,12 +6,12 @@
     "mode": "loader_snapshot_reload",
     "path": "/Users/punjab/Documents/Workspace/AnalyzeER/graphrag/data/l0_graph.json"
   },
-  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤）。",
+  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤；存疑文档线 P1-2 起不建边、只入队）。",
   "scope": {
     "includes": [
       "字段级引用/结构级 REFERENCES（列→列）",
       "反向可达影响分析（加权 BFS，≤3 跳，默认 confidence≥0.45）",
-      "多态/同名异指向/外部引用的队列化处置",
+      "多态/同名异指向/外部引用/自环记法/存疑文档线的队列化处置",
       "M1 4 pending + 9 derived 悬挂承接（登记与定级信息）"
     ],
     "excludes": [
@@ -32,34 +32,41 @@
       "category": "catregory",
       "data": "datat"
     },
-    "ambiguity_policy": "多候选/同名列异指向/COMMENT 多点名 → 一律入队列，不武断连通；后缀模糊匹配（如 cus_id→*cus）因误挂风险**不采用**"
+    "ambiguity_policy": "多候选/同名列异指向/COMMENT 多点名/自环记法解不出/存疑文档线 → 一律入队列，不武断连通；后缀模糊匹配（如 cus_id→*cus）因误挂风险**不采用**"
   },
   "lineage_stats": {
-    "references_total": 514,
+    "references_total": 499,
     "by_evidence_level": {
-      "name_inferred": 302,
-      "semantic_inferred": 62,
-      "index_backed": 116,
-      "comment_explicit": 28,
-      "unconfirmed": 6
+      "name_inferred": 300,
+      "semantic_inferred": 59,
+      "index_backed": 112,
+      "comment_explicit": 28
     },
     "by_target_col_rule": {
-      "pk": 387,
-      "pk_guess": 51,
-      "explicit_pair": 57,
+      "pk": 375,
+      "pk_guess": 50,
+      "explicit_pair": 55,
       "code_col": 19
     },
-    "self_references": 10,
-    "default_visible_ge_0.45": 446,
+    "self_references": 4,
+    "self_references_explicit_pair": 4,
+    "self_references_without_explicit_pair": 0,
+    "uncertain_edges_built": 0,
+    "default_visible_ge_0.45": 440,
     "queue_kinds": {
       "polymorphic_fk": 2,
       "external_reference": 21,
+      "doc_line_uncertain": 12,
+      "self_loop_annotation": 5,
       "target_unresolved": 51,
       "same_name_or_typo_ambiguity": 1,
-      "same_name_divergent": 9
+      "same_name_divergent": 5
     },
-    "queue_total_before_carryover": 84,
+    "queue_total_before_carryover": 97,
+    "self_loop_annotation_queued": 5,
+    "doc_line_uncertain_queued": 12,
     "dropped_naming_unresolved": 271,
+    "rejected_uncertain_edge": 0,
     "doc_skipped": {
       "via_col_absent_both": 13,
       "owner_ambiguous_both_have_col": 32,
@@ -86,6 +93,27 @@
       }
     ]
   },
+  "p1_fixes": {
+    "P1-1_self_loop_annotation": {
+      "rule": "文档线 src==dst 只是自环排版，**不得**降级为『本表自引用』错边：①desc 点名唯一真实他表→取该真实目标；②desc 有显式 `t.col->t.col2` 本表列对→才认自引用（rule=explicit_pair）；③解不出→入队 self_loop_annotation、不建列边。命名第 3 路解析目标==本表时同规。",
+      "invariant": "src_table==dst_table ⇒ target_col_rule=='explicit_pair'（断言 self_reference_explicit_pair_only=0）",
+      "queued": 5,
+      "self_references_kept": 4,
+      "self_references_explicit_pair": 4
+    },
+    "P1-2_uncertain_first_class_gate": {
+      "rule": "文档线 evidence_level==unconfirmed（无可用/未识别 `[证据]` 标签）或 has_uncertain=true（原文自带 `[待确认]`）→ **不建 REFERENCES 边**，入队 doc_line_uncertain（带 quote_hash）。",
+      "already_in_graph": "历史存疑边不删，由查询门 show_uncertain=false 默认隐藏（与 M1 search/l1 同判据；承 evidence-confidence-map §1.1）",
+      "queued": 12,
+      "uncertain_edges_built": 0
+    },
+    "P1-3_consumer_defaults": {
+      "min_conf": 0.45,
+      "show_uncertain": false,
+      "entry": "load_graph_with_lineage(min_conf=CONFIDENCE_DEFAULT_MIN, show_uncertain=False)"
+    },
+    "multi_hop_policy": "逐边 confidence≥min_conf 为准入硬门；路径连乘仅作 path_score 排序/优先展开，不作准入（防长链被连乘误杀，亦防低置信短路）。"
+  },
   "carryover": {
     "pending_total": 4,
     "derived_total": 9
@@ -109,7 +137,7 @@
       "truncated_at_budget": 0
     },
     "UC4_profile_outgoing": 7,
-    "note": "默认 min_conf=0.45 / max_hops=3；确定性可复现（同输入同输出）"
+    "note": "默认 min_conf=0.45 / max_hops=3；确定性可复现（同输入同输出）；逐边硬门 + path_score 仅排序"
   },
   "anchors_conserved": {
     "traversable_A": 349,
@@ -119,7 +147,7 @@
   },
   "assertions": {
     "all_pass": true,
-    "passed": 15,
+    "passed": 17,
     "failed": 0,
     "checks": [
       {
@@ -163,6 +191,20 @@
         "actual": 0,
         "ok": true,
         "note": ""
+      },
+      {
+        "name": "self_reference_explicit_pair_only",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "P1-1：src_table==dst_table 的 REFERENCES 必须 100% 带 explicit_pair 列对证据"
+      },
+      {
+        "name": "no_uncertain_reference_edge",
+        "target": 0,
+        "actual": 0,
+        "ok": true,
+        "note": "P1-2：unconfirmed / has_uncertain / 原文[待确认] 只入队，不成边"
       },
       {
         "name": "m1_edge_intact:RELATES_TO",
@@ -230,7 +272,7 @@
     ]
   },
   "evidence_node_stats": {
-    "evidence_nodes_added": 99
+    "evidence_nodes_added": 98
   },
   "outputs": {
     "committed": [
@@ -244,6 +286,8 @@
   "honest_unfinished": [
     "变换/ETL 数据流级血缘：超本期范围（M0 §4.3/R-9 既定排除），未实现。",
     "后缀模糊命名（raw_fabric_id→jf_goods_raw_fabric 一类 55 处）无 COMMENT/文档佐证者一律不建边（防误挂），已计入 dropped_naming_unresolved / target_unresolved 队列。",
+    "P1-1 自环记法解不出目标者（self_loop_annotation）仅登记命名线索 naming_candidates，未自动连通；人工确认后方可补边（如 sales_order_id→jf_sales_order 一类『文档自环但命名链唯一可解』者，本期一律留队列，宁缺勿假）。",
+    "P1-2 存疑文档线（doc_line_uncertain）覆盖『原文明说关联不成立/目标不明』者；其两端同持 via_column 的归属歧义线仍计入 doc_skipped.owner_ambiguous（未强判）。",
     "M1 RELATES_TO 两端同持 via_column 的归属歧义（owner_ambiguous）跳过列边生成，相关高危已由各自由 COMMENT/命名链路独立定指向（见 B-4 留痕队列项）。",
     "4 pending / 9 derived 悬挂的表级补边属 M1 写域，M2 仅承接登记 + DDL 结构定级信息，不代改 M1 产物。",
     "`_code`→目标 PK 的列级猜测（pk_guess）降为 semantic_inferred，默认阈值下隐藏，待人工确认后可升级。",

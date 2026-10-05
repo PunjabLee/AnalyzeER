@@ -1,16 +1,18 @@
 {
   "milestone": "M2",
-  "policy": "默认隐藏：confidence<0.45 / unconfirmed 不参与召回；人工确认可上调证据级（evidence-confidence-map §2）",
-  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤）。",
+  "policy": "默认隐藏：confidence<0.45 / unconfirmed 不参与召回；存疑文档线与解不出目标的自环记法只入队不成边（P1-1/P1-2）；人工确认可上调证据级（evidence-confidence-map §2）",
+  "disclaimer": "血缘为逆向推断、非物理外键（全库 0 显式 FOREIGN KEY / ADD CONSTRAINT）；证据上限 comment_explicit、confidence≤0.95；范围=引用/结构级血缘，不含变换/ETL 数据流级血缘。[待确认] 队列默认隐藏（confidence<0.45 过滤；存疑文档线 P1-2 起不建边、只入队）。",
   "counts": {
-    "total": 97,
+    "total": 110,
     "by_kind": {
+      "doc_line_uncertain": 12,
       "external_reference": 21,
       "m1_carryover_derived_dangling": 9,
       "m1_carryover_pending_relates_to": 4,
       "polymorphic_fk": 2,
-      "same_name_divergent": 9,
+      "same_name_divergent": 5,
       "same_name_or_typo_ambiguity": 1,
+      "self_loop_annotation": 5,
       "target_unresolved": 51
     }
   },
@@ -390,6 +392,106 @@
       }
     },
     {
+      "kind": "doc_line_uncertain",
+      "table": "jf_quality_compensation",
+      "column": "cus_id",
+      "reason": "文档线存疑（原文自带 [命名推断·待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D15-质量管理域.md",
+        "section": "二、ER 图（6 实体 + 9 桩 + 2 外部系统桩，桩均不计入本域表数）",
+        "table": "jf_customer",
+        "column": "cus_id",
+        "quote_hash": "bd8a6ef4ede4ae58",
+        "line_hint": 109,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_customer",
+          "table:jf_quality_compensation"
+        ],
+        "quote": "1:N [命名推断·待确认] compensation.cus_id -> jf_customer.id (列名 cus_id 非标准)"
+      },
+      "quote": "1:N [命名推断·待确认] compensation.cus_id -> jf_customer.id (列名 cus_id 非标准)",
+      "quote_hash": "bd8a6ef4ede4ae58",
+      "source_evidence_level": "name_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_business_inventory",
+      "column": "inventory_org",
+      "reason": "文档线存疑（原文自带 [待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D10-库存与仓储域.md",
+        "section": null,
+        "table": "jf_inventory_organization",
+        "column": "inventory_org",
+        "quote_hash": "ceab76b7b477a074",
+        "line_hint": 220,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_inventory_organization",
+          "table:jf_business_inventory"
+        ],
+        "quote": "N:1 [语义推断] bi.inventory_org(名称关联,待确认)"
+      },
+      "quote": "N:1 [语义推断] bi.inventory_org(名称关联,待确认)",
+      "quote_hash": "ceab76b7b477a074",
+      "source_evidence_level": "semantic_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_invoice_application",
+      "column": "express_recipient_id",
+      "reason": "文档线存疑（原文自带 [待确认目标] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D05-发票与税务域.md",
+        "section": null,
+        "table": "jf_invoice",
+        "column": "express_recipient_id",
+        "quote_hash": "ae61d639b50db2b1",
+        "line_hint": 159,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_invoice",
+          "table:jf_invoice_application"
+        ],
+        "quote": "1:1 [命名推断] app.express_recipient_id='客户收票信息id' -> jf_invoice(收货单位) [待确认目标]"
+      },
+      "quote": "1:1 [命名推断] app.express_recipient_id='客户收票信息id' -> jf_invoice(收货单位) [待确认目标]",
+      "quote_hash": "ae61d639b50db2b1",
+      "source_evidence_level": "name_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_product_inventory",
+      "column": "inventory_org",
+      "reason": "文档线存疑（原文自带 [待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D10-库存与仓储域.md",
+        "section": null,
+        "table": "jf_logical_inventory",
+        "column": "inventory_org",
+        "quote_hash": "585f74ebd271b70f",
+        "line_hint": 219,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_logical_inventory",
+          "table:jf_product_inventory"
+        ],
+        "quote": "N:1 [语义推断] pi.inventory_org(名称关联,非id,待确认)"
+      },
+      "quote": "N:1 [语义推断] pi.inventory_org(名称关联,非id,待确认)",
+      "quote_hash": "585f74ebd271b70f",
+      "source_evidence_level": "semantic_inferred"
+    },
+    {
       "kind": "external_reference",
       "table": "jf_mail",
       "column": "user_id",
@@ -411,6 +513,58 @@
       }
     },
     {
+      "kind": "self_loop_annotation",
+      "table": "jf_marketing_tag",
+      "column": "parent_id",
+      "reason": "文档线为自环记法（src==dst）：描述文本既未点名唯一真实目标表，也无显式 `t.col -> t.col2` 本表列对 → 不默认本表自引用、不建列边；待人工确认真实目标（naming_candidates 仅为复核线索，未自动连通）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D14-商品属性与基础字典域.md",
+        "section": "三、自引用与通用字典",
+        "table": "jf_marketing_tag",
+        "column": "parent_id",
+        "quote_hash": "06574e5d3fa66200",
+        "line_hint": 36,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_marketing_tag",
+          "table:jf_marketing_tag"
+        ],
+        "quote": "parent_id 标签层级自引用[字段命名]"
+      },
+      "naming_candidates": [],
+      "quote_hash": "06574e5d3fa66200",
+      "comment": "parent_id 标签层级自引用[字段命名]"
+    },
+    {
+      "kind": "self_loop_annotation",
+      "table": "jf_merge_shipment_log",
+      "column": "sales_order_id",
+      "reason": "文档线为自环记法（src==dst）：描述文本既未点名唯一真实目标表，也无显式 `t.col -> t.col2` 本表列对 → 不默认本表自引用、不建列边；待人工确认真实目标（naming_candidates 仅为复核线索，未自动连通）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D17-物流与发货域.md",
+        "section": "三、物流执行 ER 图（跨域枢纽）",
+        "table": "jf_merge_shipment_log",
+        "column": "sales_order_id",
+        "quote_hash": "6f0225fc4136fa32",
+        "line_hint": 32,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_merge_shipment_log",
+          "table:jf_merge_shipment_log"
+        ],
+        "quote": "sales_order_id 销售单[字段命名/索引]"
+      },
+      "naming_candidates": [
+        "jf_sales_order"
+      ],
+      "quote_hash": "6f0225fc4136fa32",
+      "comment": "sales_order_id 销售单[字段命名/索引]"
+    },
+    {
       "kind": "external_reference",
       "table": "jf_message",
       "column": "send_user_id",
@@ -430,6 +584,258 @@
           "table:jf_message"
         ]
       }
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_receivable_claim",
+      "column": "payment_method",
+      "reason": "文档线存疑（原文自带 [待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D04-应收收款结算域.md",
+        "section": null,
+        "table": "jf_payment_way",
+        "column": "payment_method",
+        "quote_hash": "f2153174724908bc",
+        "line_hint": 378,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_payment_way",
+          "table:jf_receivable_claim"
+        ],
+        "quote": "名称冗余 [待确认] claim.payment_method(int枚举) 与本字典无 id 关联"
+      },
+      "quote": "名称冗余 [待确认] claim.payment_method(int枚举) 与本字典无 id 关联",
+      "quote_hash": "f2153174724908bc",
+      "source_evidence_level": "unconfirmed"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_mes_main_prod_inv_rpt",
+      "column": "goods_code",
+      "reason": "文档线存疑（原文自带 [跨域D09,待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D10-库存与仓储域.md",
+        "section": null,
+        "table": "jf_product",
+        "column": "goods_code",
+        "quote_hash": "06b1264573a47cd5",
+        "line_hint": 256,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_product",
+          "table:jf_mes_main_prod_inv_rpt"
+        ],
+        "quote": "N:1 [命名推断·编码] rpt.goods_code -> product.spu [跨域D09,待确认]"
+      },
+      "quote": "N:1 [命名推断·编码] rpt.goods_code -> product.spu [跨域D09,待确认]",
+      "quote_hash": "06b1264573a47cd5",
+      "source_evidence_level": "name_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_business_inventory_record",
+      "column": "inventory_id",
+      "reason": "文档线存疑（原文自带 [目标亦可能business,待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D10-库存与仓储域.md",
+        "section": null,
+        "table": "jf_product_inventory",
+        "column": "inventory_id",
+        "quote_hash": "1a56ab8d4cc9f519",
+        "line_hint": 223,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_product_inventory",
+          "table:jf_business_inventory_record"
+        ],
+        "quote": "1:N [命名推断+索引佐证] bir.inventory_id;idx_product_inventory [目标亦可能business,待确认]"
+      },
+      "quote": "1:N [命名推断+索引佐证] bir.inventory_id;idx_product_inventory [目标亦可能business,待确认]",
+      "quote_hash": "1a56ab8d4cc9f519",
+      "source_evidence_level": "index_backed"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_project_initiation_analysis",
+      "column": "project_category_id",
+      "reason": "文档线存疑（原文无可用 `[证据]` 标签（未识别标签 → unconfirmed，evidence-confidence-map §1 末档））→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D18-项目与打样域.md",
+        "section": "三、立项分析跨域引用（宽表外键扇出）",
+        "table": "jf_project_initiation_analysis",
+        "column": "project_category_id",
+        "quote_hash": "d127824c4155a2ff",
+        "line_hint": 27,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_project_initiation_analysis",
+          "table:jf_project_category"
+        ],
+        "quote": "project_category_id"
+      },
+      "quote": "project_category_id",
+      "quote_hash": "d127824c4155a2ff",
+      "source_evidence_level": "unconfirmed"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_project_initiation_analysis",
+      "column": "project_source_id",
+      "reason": "文档线存疑（原文无可用 `[证据]` 标签（未识别标签 → unconfirmed，evidence-confidence-map §1 末档））→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D18-项目与打样域.md",
+        "section": "三、立项分析跨域引用（宽表外键扇出）",
+        "table": "jf_project_initiation_analysis",
+        "column": "project_source_id",
+        "quote_hash": "91ed38ddfc8f9fea",
+        "line_hint": 28,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_project_initiation_analysis",
+          "table:jf_project_source"
+        ],
+        "quote": "project_source_id"
+      },
+      "quote": "project_source_id",
+      "quote_hash": "91ed38ddfc8f9fea",
+      "source_evidence_level": "unconfirmed"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_quality_standard",
+      "column": "country_category_id",
+      "reason": "文档线存疑（原文自带 [命名推断·待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D15-质量管理域.md",
+        "section": "二、ER 图（6 实体 + 9 桩 + 2 外部系统桩，桩均不计入本域表数）",
+        "table": "jf_quality_standard",
+        "column": "country_category_id",
+        "quote_hash": "a105a98d1de572cf",
+        "line_hint": 104,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_quality_standard",
+          "table:jf_country"
+        ],
+        "quote": "N:0..1 [命名推断·待确认] country_category_id 与 country_key 两列均称'国家'，双候选 jf_country/OT country [跨域D14]"
+      },
+      "quote": "N:0..1 [命名推断·待确认] country_category_id 与 country_key 两列均称'国家'，双候选 jf_country/OT country [跨域D14]",
+      "quote_hash": "a105a98d1de572cf",
+      "source_evidence_level": "name_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_quality_sales_mapping",
+      "column": "sales_order_code",
+      "reason": "文档线存疑（原文自带 [命名推断·待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D15-质量管理域.md",
+        "section": "二、ER 图（6 实体 + 9 桩 + 2 外部系统桩，桩均不计入本域表数）",
+        "table": "jf_sales_order",
+        "column": "sales_order_code",
+        "quote_hash": "730dcce7fcbd7ad0",
+        "line_hint": 112,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_sales_order",
+          "table:jf_quality_sales_mapping"
+        ],
+        "quote": "1:N [命名推断·待确认] mapping.sales_order_code -> jf_sales_order 单号 (以 code 匹配非 id) [跨域D01]"
+      },
+      "quote": "1:N [命名推断·待确认] mapping.sales_order_code -> jf_sales_order 单号 (以 code 匹配非 id) [跨域D01]",
+      "quote_hash": "730dcce7fcbd7ad0",
+      "source_evidence_level": "name_inferred"
+    },
+    {
+      "kind": "doc_line_uncertain",
+      "table": "jf_sales_order_wide",
+      "column": "sales_type",
+      "reason": "文档线存疑（原文自带 [待确认] 标记）→ 不建 REFERENCES 边；原文声明该关联不成立/目标不明，建边即造假的血缘",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D01-销售订单域.md",
+        "section": null,
+        "table": "jf_sales_type",
+        "column": "sales_type",
+        "quote_hash": "6e65b48452ef5f41",
+        "line_hint": 205,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_sales_type",
+          "table:jf_sales_order_wide"
+        ],
+        "quote": "名称冗余 [待确认] wide.sales_type(varchar) 未见 sales_type_id"
+      },
+      "quote": "名称冗余 [待确认] wide.sales_type(varchar) 未见 sales_type_id",
+      "quote_hash": "6e65b48452ef5f41",
+      "source_evidence_level": "unconfirmed"
+    },
+    {
+      "kind": "self_loop_annotation",
+      "table": "jf_shipping_progress",
+      "column": "income_bill_id",
+      "reason": "文档线为自环记法（src==dst）：描述文本既未点名唯一真实目标表，也无显式 `t.col -> t.col2` 本表列对 → 不默认本表自引用、不建列边；待人工确认真实目标（naming_candidates 仅为复核线索，未自动连通）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D17-物流与发货域.md",
+        "section": "三、物流执行 ER 图（跨域枢纽）",
+        "table": "jf_shipping_progress",
+        "column": "income_bill_id",
+        "quote_hash": "126517bc5ef0b856",
+        "line_hint": 31,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_shipping_progress",
+          "table:jf_shipping_progress"
+        ],
+        "quote": "income_bill_id 进账单[字段命名/索引]"
+      },
+      "naming_candidates": [
+        "jf_income_bill"
+      ],
+      "quote_hash": "126517bc5ef0b856",
+      "comment": "income_bill_id 进账单[字段命名/索引]"
+    },
+    {
+      "kind": "self_loop_annotation",
+      "table": "jf_user_show_page_table",
+      "column": "user_id",
+      "reason": "文档线为自环记法（src==dst）：描述文本既未点名唯一真实目标表，也无显式 `t.col -> t.col2` 本表列对 → 不默认本表自引用、不建列边；待人工确认真实目标（naming_candidates 仅为复核线索，未自动连通）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "er-model/01-ER图/D16-系统与协作配置域.md",
+        "section": "三、协作消息与系统配置 ER 图",
+        "table": "jf_user_show_page_table",
+        "column": "user_id",
+        "quote_hash": "d9df89923b743feb",
+        "line_hint": 38,
+        "signal": "doc_relation_line",
+        "via_relates_to": [
+          "table:jf_user_show_page_table",
+          "table:jf_user_show_page_table"
+        ],
+        "quote": "user_id+page_path 配置[索引佐证 idx_user_id]"
+      },
+      "naming_candidates": [],
+      "quote_hash": "d9df89923b743feb",
+      "comment": "user_id+page_path 配置[索引佐证 idx_user_id]"
     },
     {
       "kind": "target_unresolved",
@@ -1394,6 +1800,27 @@
       "comment": "关联业务单号（销售单号）"
     },
     {
+      "kind": "self_loop_annotation",
+      "table": "jf_trader_month_sales",
+      "column": "trader_month_sales_id",
+      "reason": "`_id/_code` 规范命名解析出的唯一目标即**本表**（自指），列 COMMENT 又无显式 `t.col -> t.col2` 列对 → 不默认本表自引用、不建列边（待人工确认是否树形自引用）",
+      "status": "[待确认]",
+      "confidence": 0.1,
+      "evidence": {
+        "file": "test_erp.sql",
+        "section": "CREATE TABLE `jf_trader_month_sales`",
+        "table": "jf_trader_month_sales",
+        "column": "trader_month_sales_id",
+        "quote_hash": "b1de50eebc8652c4",
+        "line_hint": 17345,
+        "signal": "naming_self_reference"
+      },
+      "candidate_tables": [
+        "jf_trader_month_sales"
+      ],
+      "comment": "贸易商月度销售ID"
+    },
+    {
       "kind": "target_unresolved",
       "table": "jf_wms_request_record",
       "column": "request_id",
@@ -1495,57 +1922,6 @@
     },
     {
       "kind": "same_name_divergent",
-      "column": "goods_code",
-      "tables": [
-        "jf_anchor_product_stock_report.goods_code",
-        "jf_mes_main_prod_inv_rpt.goods_code",
-        "jf_printing_approve.goods_code",
-        "jf_product_color_price.goods_code",
-        "jf_proofing_number.goods_code",
-        "jf_quota_goods_mapping.goods_code",
-        "jf_quota_goods_mapping_import.goods_code",
-        "jf_stock_pot_summary_info.goods_code"
-      ],
-      "resolved_targets": [
-        "jf_goods.id",
-        "jf_product.spu"
-      ],
-      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
-      "status": "[待确认]",
-      "confidence": 0.1
-    },
-    {
-      "kind": "same_name_divergent",
-      "column": "income_bill_id",
-      "tables": [
-        "jf_income_bill_collection_detail.income_bill_id",
-        "jf_shipping_progress.income_bill_id"
-      ],
-      "resolved_targets": [
-        "jf_income_bill.id",
-        "jf_shipping_progress.id"
-      ],
-      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
-      "status": "[待确认]",
-      "confidence": 0.1
-    },
-    {
-      "kind": "same_name_divergent",
-      "column": "inventory_org",
-      "tables": [
-        "jf_business_inventory.inventory_org",
-        "jf_product_inventory.inventory_org"
-      ],
-      "resolved_targets": [
-        "jf_inventory_organization.id",
-        "jf_logical_inventory.id"
-      ],
-      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
-      "status": "[待确认]",
-      "confidence": 0.1
-    },
-    {
-      "kind": "same_name_divergent",
       "column": "order_code",
       "tables": [
         "jf_return_frozen_sn_details.order_code",
@@ -1580,7 +1956,6 @@
       "tables": [
         "jf_fee_bill_sales_order.sales_order_code",
         "jf_fee_item.sales_order_code",
-        "jf_quality_sales_mapping.sales_order_code",
         "jf_rebate_detail.sales_order_code",
         "jf_sales_order_async.sales_order_code",
         "jf_sales_order_oa_audit.sales_order_code",
@@ -1589,36 +1964,6 @@
       "resolved_targets": [
         "jf_sales_order.id",
         "jf_sales_order.order_no"
-      ],
-      "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
-      "status": "[待确认]",
-      "confidence": 0.1
-    },
-    {
-      "kind": "same_name_divergent",
-      "column": "sales_order_id",
-      "tables": [
-        "jf_inventory_frozen_record.sales_order_id",
-        "jf_merge_shipment_log.sales_order_id",
-        "jf_rebate_detail.sales_order_id",
-        "jf_receivable_claim_quota_recovery_record.sales_order_id",
-        "jf_sales_order_change_record.sales_order_id",
-        "jf_sales_order_cus.sales_order_id",
-        "jf_sales_order_detail.sales_order_id",
-        "jf_sales_order_detail_fee.sales_order_id",
-        "jf_sales_order_discount.sales_order_id",
-        "jf_sales_order_picking_detail.sales_order_id",
-        "jf_sales_order_quota_usage_record.sales_order_id",
-        "jf_sales_order_receipt.sales_order_id",
-        "jf_sales_order_status_record.sales_order_id",
-        "jf_sales_return_link_original.sales_order_id",
-        "jf_sales_return_request.sales_order_id",
-        "jf_settlement_detail.sales_order_id",
-        "jf_shipping_progress.sales_order_id"
-      ],
-      "resolved_targets": [
-        "jf_merge_shipment_log.id",
-        "jf_sales_order.id"
       ],
       "reason": "05 B-4 同名列跨表异指向；各端已由 COMMENT/文档/索引分别定指向（连通=有上下文证据，非武断），留痕供人工复核",
       "status": "[待确认]",

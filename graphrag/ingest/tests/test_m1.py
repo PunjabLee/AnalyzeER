@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+
 import pytest
 
 from graphrag.ingest.ddl_parser import parse_ddl, ddl_metrics
@@ -177,3 +180,57 @@ def test_traverse_lineage(loaded):
     # 遍历仅走 A 级
     tiers = {g.nodes[f"table:{p['to']}"].get("tier") for p in t["paths"]}
     assert tiers <= {"A"}
+
+
+@pytest.fixture(scope="module")
+def l1_with_fts(loaded):
+    """带中文兜底 FTS 的 L1 检索入口（模块级复用）。"""
+    fts = FTSIndex(os.path.join(tempfile.mkdtemp(), "idx.db"), rebuild=True)
+    fts.build(loaded["graph"])
+    yield L1Search(loaded["graph"], fts)
+    fts.close()
+
+
+# -------------------------------------------------- P1-3 中文检索（此前恒 0 命中）
+def test_fts_cjk_search_hits(loaded, l1_with_fts):
+    hits = l1_with_fts.fts.search("销售订单", label="Table", limit=10)
+    names = {h["name"] for h in hits}
+    assert hits, "中文『销售订单』必须有命中（双路 trigram 兜底）"
+    # 表注释含『销售订单』的 A 级表须被召回
+    assert names & {"jf_sales_order_cus", "jf_sales_order_wide"}, names
+    assert all(h["tier"] != "C" for h in hits)
+
+
+# -------------------------------------------------- P1-4 UC2 反查：返回真实表名
+def test_uc2_tables_with_column_returns_real_tables(loaded, l1_with_fts):
+    g = loaded["graph"]
+    r = l1_with_fts.tables_with_column("sales_order_id")
+    assert r["exact_count"] > 0
+    # 语义近似表集必须是真实存在的表节点，且不得把裸列名当表名
+    for t in r["semantic_tables"]:
+        assert g.has_node(f"table:{t}"), f"semantic_tables 混入非表名: {t}"
+    assert "sales_order_id" not in r["semantic_tables"]
+
+
+# -------------------------------------------------- P2 traverse both 去重 + 不自环
+def test_traverse_both_dedup_and_no_self_neighbor(loaded, l1_with_fts):
+    t = l1_with_fts.traverse("jf_sales_order", "both", max_hops=3)
+    assert t["exists"] is True
+    # 不出现「1 跳邻居是自己」
+    assert all(p["to"] != p["from"] for p in t["paths"])
+    # 同一无向边只计一次（按 {from,to}+quote_hash 去重）
+    keys = [(tuple(sorted((p["from"], p["to"]))), p.get("quote_hash")) for p in t["paths"]]
+    assert len(keys) == len(set(keys)), "both 方向存在重复计入的同一条边"
+
+
+# -------------------------------------------------- 置信门 show_uncertain 默认隐藏
+def test_show_uncertain_default_hides(loaded, l1_with_fts):
+    # jf_customer 有一条 name_inferred(0.575) 但 [待确认] 的表级边
+    off = l1_with_fts.relations_of("jf_customer")
+    on = l1_with_fts.relations_of("jf_customer", show_uncertain=True)
+    assert not any(x["has_uncertain"] for x in off["relations"]), "默认视图不应泄露存疑边"
+    assert on["count"] > off["count"], "show_uncertain=True 应暴露被默认隐藏的低置信存疑边"
+    # 遍历同样默认过滤存疑边
+    tro = l1_with_fts.traverse("jf_customer", "both", show_uncertain=False)
+    trn = l1_with_fts.traverse("jf_customer", "both", show_uncertain=True)
+    assert trn["edge_traversed"] >= tro["edge_traversed"]
