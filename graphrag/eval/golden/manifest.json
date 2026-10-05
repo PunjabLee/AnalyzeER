@@ -1,0 +1,45 @@
+{
+  "artifact": "GraphRAG 黄金问答集（六类 UC + 全局 + 超范围守卫）",
+  "owner": "rag-eval-gate（graphrag/eval/golden/ 唯一写入者；执行专家只读，禁改题目与阈值）",
+  "milestone": "M4（首次落地）",
+  "construction_spec": "graphrag/spec/eval-baseline.md §1（UC1–UC6 构造规范）+ §2（确定性基线测法）",
+  "entry_under_test": "graphrag.nl.nl_router.NLRouter().answer(query, min_confidence=0.45, show_uncertain=False, max_hops=3)",
+  "gates_fixed": {
+    "min_confidence": 0.45,
+    "show_uncertain": false,
+    "max_hops": 3,
+    "note": "题目一律以默认门跑测；NL 不绕置信/存疑/多跳预算（design-plan §5.2/§6、RUNBOOK M4 门 3）"
+  },
+  "thresholds": {
+    "top3_hit_rate_target": ">= 90% [待确认]",
+    "single_hop_p95": "< 2s [待确认]",
+    "multi_hop_p95": "< 8s [待确认]",
+    "discipline": "本 harness 只记录实测命中率/时延，不判“达标”（阈值待业务方确认，eval-baseline §2.2 / design-plan §1.5）"
+  },
+  "metric_taxonomies": {
+    "top3": "gold 关键实体 ∈ 意图相关性排序列表的前 3（UC1 BM25 / UC3 置信序 / 全局 枢纽度序）",
+    "reachable": "gold 实体 ∈ ≤max_hops(3) 跳可达集（UC4 影响 / UC5 血缘；多跳 BFS 非严格相关序，采“可达且在预算内”为命中口径，eval-baseline §2.2 多跳截断可复现）",
+    "coverage": "gold 子集 ⊆ 返回枚举集，且可选 assert_count 与 DDL/00 §四 一致（UC2 列/表枚举、UC6 域内表/Issue 聚合）",
+    "refused": "无路径/无节点 → refused=True 且 answer/sources 为空（边界例；测“拒绝臆造兜底”，不计入命中率分母）",
+    "oos_refused": "指标/KPI/术语表 → intent=out_of_scope 且 refused=True（超范围守卫，R-10）"
+  },
+  "headline_policy": "主口径 Top-3 命中率仅统计 metric=top3 的题；另有“综合命中率”统计全部非边界题（top3+reachable+coverage）。阈值 [待确认]，只报实测。",
+  "item_count_by_uc": {
+    "UC1": 4,
+    "UC2": 3,
+    "UC3": 3,
+    "UC4": 2,
+    "UC5": 2,
+    "UC6": 3,
+    "GLOBAL": 2,
+    "OOS": 2,
+    "total": 21
+  },
+  "boundary_coverage": "每类 UC 均含 ≥1 边界/负例（refused）；含 2 条超范围指标守卫（RUNBOOK M4 门 2 / eval-baseline §1 分布约束）",
+  "tier_scope_default": "只考 A 级可遍历主语料（349）；B/C 默认降权（eval-baseline §1 tier_scope）",
+  "grounding": "gold 全部取自 er-model/{00,05,01-ER图,03-逻辑数据模型} + test_erp.sql 实物；逐题 source 可回溯，不臆造",
+  "known_recall_probes": [
+    "u1-03『哪些表存发票』gold jf_invoice（D05，05 L33）未进 BM25/trigram Top-3 → 记为真实召回缺口（R-5 语义类缺口候选，非系统错误）",
+    "u3-02『jf_customer 关联』canonical jf_sales_order(05 L28, conf0.775) 被三条 0.9 边压至 Top-3 之外 → 记 Top-3 缺口但 recall 命中"
+  ]
+}
